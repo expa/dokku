@@ -1,5 +1,110 @@
 # History
 
+## 0.3.22
+
+This release is a general bugfix release, with improvements to handling of nginx templates and application configuration.
+
+### Bug Fixes
+
+- #825: @andrewsomething Add support for multiple keys in the installer.
+- #1274: @michaelhobbs Parse correct section of path for `dokku ls` container type
+- #1289: @michaelhobbs Do not background container cleanup
+- #1298: @SonicHedgehog Fix check-deploy skipping the root path
+- #1300: @michaelhobbs Fix urls command when NO_VHOST=1
+- #1310: @michaelhobbs Use config:get for checks skipping variables
+- #1311: @michaelhobbs Ignore protocol of Dockerfile EXPOSE (refs: #1280)
+- #1312: @michaelhobbs Use docker inspect fordefault container check. Closes #1270
+- #1313: @michaelhobbs Verify we have an app when deploy is called. Closes #1309
+- #1319: @MWers Spelling fix: 'comma seperated'=>'comma-separated'
+- #1331: @alexkruegger Fix retrieval of nginx.conf.template app
+
+### New Features
+
+- #1149: @mlebkowski Add pluginhook to receive branches different than master
+- #1254: @kilianc Add DOKKU_DOCKERFILE_START_CMD support
+- #1261: @Flink Add the ability to skip checks (all or default)
+- #1277: @krokhale Add gzip to nginx templates by default
+- #1278: @assaf Add the ability to retrieve nginx template from app
+- #1291: @michaelhobbs Refactored interface for managing global/local app configuration
+- #1299: @SonicHedgehog Set X-Forwarded-Proto header if TLS is enabled when running checks
+
+### Docs Changes
+
+- #1273: @alessio Add docs for the events plugin
+- #1276: @josegonzalez Reorder and deprecate a few plugins
+- #1279: @josegonzalez Add docs for `receive-branch` hook. Refs #1149
+- #1282: @josegonzalez Move primecache to deprecated plugins
+- #1285: @josegonzalez Rename dokku-events-logs.md according to index.md
+- #1296: @Flink Add docker-auto-volumes to plugins
+- #1301: @mixxorz Add reset mtime plugin list
+- #1302: @fwolfst Mention where original nginx templates are found by default.
+- #1306: @josegonzalez Clarify web/cli installation docs. Closes #1177. Closes #1170
+- #1307: @josegonzalez Add release documentation. Closes #1287
+- #1324: @michaelhobbs Update docs to reflect default checks
+
+## 0.3.21
+
+This release fixes an issue with installing buildstep and dokku.
+
+### New Features
+
+- #1256: @alessio Log all dokku events to /var/log/dokku/events.log
+
+### Bug Fixes
+
+- #1269: @josegonzalez Peg lxc-docker in buildstep to 1.6.2
+
+## 0.3.20
+
+This release pegs Dokku to Docker 1.6.2. Docker 1.7.0 introduced changes in `docker ps` which cause incompatibilities with many popular dokku plugins.
+
+### New Features
+
+- #1245: @arthurschreiber Support config variables containing `\n`
+- #1257: @josegonzalez Split nginx ssl logs by $APP
+
+### Bug Fixes
+
+- #1207: @rockymadden Fixed bug with client commands taking verb, appname, and also arguments.
+- #1251: @josegonzalez Fallback to using /etc/init.d/nginx reload directly to restart nginx
+- #1264: @josegonzalez Require lxc-docker-1.6.2
+
+### Docs Changes
+
+- #1252: @josegonzalez Fix ssh port for vagrant installation. Closes #1139. [ci skip]
+- #1250: @josegonzalez SSL documentation is misleading
+
+## 0.3.19
+
+### New Features
+
+- #1118: @michaelhobbs Heroku-style Container-Level scaling
+- #1210: @cddr Split nginx logs out by $APP
+- #1232: @michaelhobbs Allow passing of docker build options and document dockerfile deployment. Closes #1231
+
+### Bug Fixes
+
+- #1179: @follmann Prevent dismissal of URLs in CHECKS file that contain query params
+- #1193: @michaelhobbs Handle docker opts over ssh without escaping quotes. closes #1187
+- #1198: @3onyc Check web_config before key_file (Fixes #1196)
+- #1200: @josegonzalez Fix lintball from #1198
+- #1202: @michaelhobbs Filter out literal wildcard when deploying an unrelated domain. Closes #1185
+- #1204: @3onyc Fix bootstrap.sh, install curl when it's missing, make curl follow redirects, don't suppress stderr
+- #1206: @rockymadden Handle for installs in /usr/local/bin and the like.
+- #1212: @michaelhobbs Let circleci dictate docker install (fixes master)
+- #1217: @kirushanth-sakthivetpillai Fix broken ssl wildcard redirect
+- #1227: @Flink Use --no-cache when building Dockerfile
+- #1246: @josegonzalez Ensure we call apt-get before installing packages
+
+### Docs Changes
+
+- #1168: @cjblomqvist [docs] Update git-rev plugin to point to maintained version
+- #1180: @sherbondy [docs] Clarify usage around official dokku `docker-options` plugin
+- #1192: @alessio [docs] Add reference to dokku-events plugin
+- #1218: @michaelhobbs [docs] add dokku-logspout plugin
+- #1224: @lmars [docs] Add link from plugin-creation to pluginhooks
+- #1237: @zyegfryed [docs] Typo (at at -> at)
+
 ## 0.3.18
 
 - #1111: @michaelhobbs Call pre-build-dockerfile before docker build

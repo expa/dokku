@@ -18,6 +18,7 @@ Docker powered mini-Heroku. The smallest PaaS implementation you've ever seen.
 - [Nginx Configuration](http://progrium.viewdocs.io/dokku/nginx)
 - [Running Remote commands](http://progrium.viewdocs.io/dokku/remote-commands)
 - [Container Options](http://progrium.viewdocs.io/dokku/docker-options)
+- [Dokku Event Logs](http://progrium.viewdocs.io/dokku/dokku-events-logs)
 
 ### Community Contributions
 
@@ -29,6 +30,7 @@ Docker powered mini-Heroku. The smallest PaaS implementation you've ever seen.
 - [Plugin Creation](http://progrium.viewdocs.io/dokku/development/plugin-creation)
 - [Pluginhooks](http://progrium.viewdocs.io/dokku/development/pluginhooks)
 - [Test Suite](http://progrium.viewdocs.io/dokku/development/testing)
+- [Release Process](http://progrium.viewdocs.io/dokku/development/release-process)
 
 ## Things this project won't do
 

@@ -86,15 +86,17 @@ docker: aufs
 	apt-get install -qq -y curl
 	egrep -i "^docker" /etc/group || groupadd docker
 	usermod -aG docker dokku
+ifndef CI
 	curl -sSL https://get.docker.com/gpg | apt-key add -
 	echo deb http://get.docker.io/ubuntu docker main > /etc/apt/sources.list.d/docker.list
 	apt-get update
 ifdef DOCKER_VERSION
 	apt-get install -qq -y lxc-docker-${DOCKER_VERSION}
 else
-	apt-get install -qq -y lxc-docker
+	apt-get install -qq -y lxc-docker-1.6.2
 endif
 	sleep 2 # give docker a moment i guess
+endif
 
 aufs:
 ifndef CI

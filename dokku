@@ -10,6 +10,9 @@ export PLUGIN_PATH=${PLUGIN_PATH:="/var/lib/dokku/plugins"}
 export DOKKU_NOT_IMPLEMENTED_EXIT=10
 export DOKKU_VALID_EXIT=0
 
+export DOKKU_LOGS_DIR=${DOKKU_LOGS_DIR:="/var/log/dokku"}
+export DOKKU_EVENTS_LOGFILE=${DOKKU_EVENTS_LOGFILE:="$DOKKU_LOGS_DIR/events.log"}
+
 source "$PLUGIN_PATH/common/functions"
 
 [[ -f $DOKKU_ROOT/dokkurc ]] && source $DOKKU_ROOT/dokkurc
@@ -63,12 +66,15 @@ case "$1" in
     ;;
 
   deploy)
+    [[ -z $2 ]] && dokku_log_fail "Please specify an app to deploy"
     APP="$2"; IMAGE="dokku/$APP"
+    verify_app_name "$APP"
+
     pluginhook pre-deploy $APP
 
     is_image_buildstep_based "$IMAGE" && DOKKU_BUILDSTEP=true
     DOKKU_SCALE_FILE="$DOKKU_ROOT/$APP/DOKKU_SCALE"
-    oldids=$(get_container_ids $APP)
+    oldids=$(get_app_container_ids $APP)
 
     while read line || [ -n "$line" ]
     do
@@ -89,7 +95,11 @@ case "$1" in
         BIND_EXTERNAL=$(pluginhook bind-external-ip $APP)
 
         [[ -n "$DOKKU_BUILDSTEP" ]] && START_CMD="/start $PROC_TYPE"
-        [[ -z "$DOKKU_BUILDSTEP" ]] && DOKKU_DOCKERFILE_PORT=$(dokku config:get $APP DOKKU_DOCKERFILE_PORT || true)
+
+        if [[ -z "$DOKKU_BUILDSTEP" ]];then
+          DOKKU_DOCKERFILE_PORT=$(dokku config:get $APP DOKKU_DOCKERFILE_PORT || true)
+          START_CMD=$(dokku config:get $APP DOKKU_DOCKERFILE_START_CMD || $START_CMD)
+        fi
 
         if [[ "$BIND_EXTERNAL" = "false" ]] && [[ "$PROC_TYPE" == "web" ]];then
           port=${DOKKU_DOCKERFILE_PORT:=5000}
@@ -110,11 +120,23 @@ case "$1" in
           kill -9 $$
         }
 
+        DOKKU_APP_SKIP_ALL_CHECKS=$(dokku config:get $APP DOKKU_SKIP_ALL_CHECKS || true)
+        DOKKU_APP_SKIP_DEFAULT_CHECKS=$(dokku config:get $APP DOKKU_SKIP_DEFAULT_CHECKS || true)
+        DOKKU_GLOBAL_SKIP_ALL_CHECKS=$(dokku config:get --global DOKKU_SKIP_ALL_CHECKS || true)
+        DOKKU_GLOBAL_SKIP_DEFAULT_CHECKS=$(dokku config:get --global DOKKU_SKIP_DEFAULT_CHECKS || true)
+
+        DOKKU_SKIP_ALL_CHECKS=${DOKKU_APP_SKIP_ALL_CHECKS:="$DOKKU_GLOBAL_SKIP_ALL_CHECKS"}
+        DOKKU_SKIP_DEFAULT_CHECKS=${DOKKU_APP_SKIP_DEFAULT_CHECKS:="$DOKKU_GLOBAL_SKIP_DEFAULT_CHECKS"}
+
         # run checks first, then post-deploy hooks, which switches Nginx traffic
-        trap kill_new INT TERM EXIT
-        dokku_log_info1 "Running pre-flight checks"
-        pluginhook check-deploy  $APP $id $PROC_TYPE $port $ipaddr
-        trap -        INT TERM EXIT
+        if [[ "$DOKKU_SKIP_ALL_CHECKS" = "true" ]]; then
+          dokku_log_info1 "Skipping pre-flight checks"
+        else
+          trap kill_new INT TERM EXIT
+          dokku_log_info1 "Running pre-flight checks"
+          pluginhook check-deploy  $APP $id $PROC_TYPE $port $ipaddr
+          trap -        INT TERM EXIT
+        fi
 
         # now using the new container
         [[ -n "$id" ]] && echo $id > "$DOKKU_CONTAINER_ID_FILE"
@@ -201,10 +223,10 @@ case "$1" in
     echo "Options:"
 
     cat<<EOF | pluginhook commands help | sort
-    help                                            Print the list of commands
-    plugins                                         Print active plugins
-    plugins-install                                 Install active plugins
-    plugins-update                                  Update active plugins
+    help                                                       Print the list of commands
+    plugins                                                    Print active plugins
+    plugins-install                                            Install active plugins
+    plugins-update                                             Update active plugins
 EOF
     ;;
 
