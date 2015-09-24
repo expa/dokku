@@ -77,7 +77,7 @@ teardown() {
 }
 
 @test "(config) config:unset" {
-  run ssh dokku@dokku.me config:set $TEST_APP test_var=true test_var2=\"hello world\"
+  run ssh dokku@dokku.me config:set $TEST_APP test_var=true test_var2=\"hello world\" test_var3=\"with\\nnewline\"
   echo "output: "$output
   echo "status: "$status
   assert_success
@@ -93,9 +93,21 @@ teardown() {
   echo "output: "$output
   echo "status: "$status
   assert_output ""
+  run dokku config:get $TEST_APP test_var3
+  echo "output: "$output
+  echo "status: "$status
+  assert_output 'with\nnewline'
+  run dokku config:unset $TEST_APP test_var3
+  echo "output: "$output
+  echo "status: "$status
+  assert_success
+  run dokku config:get $TEST_APP test_var3
+  echo "output: "$output
+  echo "status: "$status
+  assert_output ""
 }
 
-@test "(config) global config (buildstep)" {
+@test "(config) global config (herokuish)" {
   deploy_app
   run bash -c "dokku run $TEST_APP env | egrep '^global_test=true'"
   echo "output: "$output

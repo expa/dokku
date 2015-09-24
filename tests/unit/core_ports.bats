@@ -142,16 +142,6 @@ check_urls() {
   check_urls http://www.test.app.dokku.me
 }
 
-@test "(core) dockerfile port exposure" {
-  deploy_app dockerfile
-  run bash -c "grep -A1 upstream $DOKKU_ROOT/$TEST_APP/nginx.conf | grep -q 3000"
-  echo "output: "$output
-  echo "status: "$status
-  assert_success
-
-  check_urls http://${TEST_APP}.dokku.me
-}
-
 @test "(core) port exposure (xip.io style hostnames)" {
   echo "127.0.0.1.xip.io" > "$DOKKU_ROOT/VHOST"
   deploy_app
@@ -164,8 +154,18 @@ check_urls() {
   check_urls http://my-cool-guy-test-app.127.0.0.1.xip.io
 }
 
+@test "(core) dockerfile port exposure" {
+  deploy_app dockerfile
+  run bash -c "grep -A1 upstream $DOKKU_ROOT/$TEST_APP/nginx.conf | grep -q 3000"
+  echo "output: "$output
+  echo "status: "$status
+  assert_success
+
+  check_urls http://${TEST_APP}.dokku.me
+}
+
 @test "(core) port exposure (dockerfile raw port)" {
-  source "$PLUGIN_PATH/common/functions"
+  source "$PLUGIN_CORE_AVAILABLE_PATH/common/functions"
   cat<<EOF > $DOCKERFILE
 EXPOSE 3001/udp
 EXPOSE 3003
@@ -178,7 +178,7 @@ EOF
 }
 
 @test "(core) port exposure (dockerfile tcp port)" {
-  source "$PLUGIN_PATH/common/functions"
+  source "$PLUGIN_CORE_AVAILABLE_PATH/common/functions"
   cat<<EOF > $DOCKERFILE
 EXPOSE 3001/udp
 EXPOSE  3000/tcp
