@@ -13,10 +13,17 @@ Let's take a quick look at the current dokku nginx plugin that's shipped with do
 ## Installing a plugin
 
 ```shell
-cd /var/lib/dokku/plugins/available
+# This command requires `root` permissions as the `install` and `install-dependencies`
+# plugin triggers may utilize commands such as `apt-get`. For non-core plugins, please
+# inspect those plugins before running the following command as `root` user.
+sudo plugin:install <git_url>
+
+# previous versions (0.3.x and below) of dokku require a manual process to install plugins
+cd /var/lib/dokku/plugins
 git clone <git url>
-dokku plugin:install
+dokku plugins-install
 ```
+
 ## Creating your own plugin
 
 [See the full documentation](http://progrium.viewdocs.io/dokku/development/plugin-creation).
@@ -202,7 +209,7 @@ Note: The following plugins have been supplied by our community and may not have
 | Plugin                                                                                            | Author                | Compatibility         |
 | ------------------------------------------------------------------------------------------------- | --------------------- | --------------------- |
 | [Airbrake deploy](https://github.com/Flink/dokku-airbrake-deploy)                                 | [Flink][]             | 0.4.0+                |
-| [APT](https://github.com/F4-Group/dokku-apt)                                                      | [F4-Group][]          |                       |
+| [APT](https://github.com/F4-Group/dokku-apt)                                                      | [F4-Group][]          | 0.2.0+ (tag 0.2.0), 0.3.0+ (tag 0.3.0), 0.4.0+ |
 | [Chef cookbooks](https://github.com/fgrehm/chef-dokku)                                            | [fgrehm][]            |                       |
 | [Bower install](https://github.com/alexanderbeletsky/dokku-bower-install)                         | [alexanderbeletsky][] |                       |
 | [Bower/Grunt](https://github.com/thrashr888/dokku-bower-grunt-build-plugin)                       | [thrashr888][]        |                       |
