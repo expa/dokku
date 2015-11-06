@@ -40,7 +40,8 @@ case "$1" in
         plugn trigger pre-build-dockerfile "$APP"
 
         [[ "$DOKKU_DOCKERFILE_CACHE_BUILD" == "false" ]] && DOKKU_DOCKER_BUILD_OPTS="$DOKKU_DOCKER_BUILD_OPTS --no-cache"
-        docker build $DOKKU_DOCKER_BUILD_OPTS -t "$IMAGE" .
+        DOCKER_ARGS=$(: | plugn trigger docker-args-build $APP)
+        docker build $DOCKER_ARGS $DOKKU_DOCKER_BUILD_OPTS -t "$IMAGE" .
 
         plugn trigger post-build-dockerfile "$APP"
         ;;
@@ -192,6 +193,7 @@ case "$1" in
     cat<<EOF
     ls, Pretty listing of deployed applications and containers
     run <app> <cmd>, Run a command in the environment of an application
+    trace [on/off], Enable dokku tracing
     url <app>, Show the first URL for an application (compatibility)
     urls <app>, Show all URLs for an application
     version, Print dokku's version

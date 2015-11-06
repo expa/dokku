@@ -23,7 +23,7 @@ random_name() {
  UPPER_APPNAME="${MOVES[${NUM1}]}-${MOVES[${NUM2}]}-${NAMES[${NUM3}]}"
 
  [[ "$BASH_VERSION" =~ 4.* ]] && lower_appname=${UPPER_APPNAME,,}
- [[ -z "$lower_appname" ]] && lower_appname=$(echo $UPPER_APPNAME | tr '[:upper:]' '[:lower:]')
+ [[ -z "$lower_appname" ]] && lower_appname=$(echo "$UPPER_APPNAME" | tr '[:upper:]' '[:lower:]')
  echo "$lower_appname"
 }
 
@@ -81,8 +81,7 @@ if [[ ! -z $DOKKU_HOST ]]; then
           counter=$((counter+1))
         fi
       done
-      if git remote add dokku "dokku@$DOKKU_HOST:$appname"
-      then
+      if git remote add dokku "dokku@$DOKKU_HOST:$appname"; then
         echo "-----> Dokku remote added at $DOKKU_HOST"
         echo "-----> Application name is $appname"
       else
@@ -94,7 +93,8 @@ if [[ ! -z $DOKKU_HOST ]]; then
     fi
 
     if [[ -z "$donotshift" ]]; then
-      ssh -t "dokku@$DOKKU_HOST" "$@"
+      # shellcheck disable=SC2029
+      ssh -o LogLevel=QUIET -t "dokku@$DOKKU_HOST" "$@"
       exit $?
     fi
 
@@ -120,8 +120,8 @@ if [[ ! -z $DOKKU_HOST ]]; then
         done
       fi
     fi
-    # shellcheck disable=SC2086
-    ssh -t "dokku@$DOKKU_HOST" $long_args "$verb" "$appname" "${args[@]}"
+    # shellcheck disable=SC2086,SC2029
+    ssh -o LogLevel=QUIET -t "dokku@$DOKKU_HOST" $long_args "$verb" "$appname" "${args[@]}"
   }
 
   if [[ "$0" == "dokku" ]] || [[ "$0" == *dokku_client.sh ]] || [[ "$0" == $(which dokku) ]]; then

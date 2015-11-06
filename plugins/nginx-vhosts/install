@@ -2,6 +2,10 @@
 set -eo pipefail; [[ $DOKKU_TRACE ]] && set -x
 
 case "$DOKKU_DISTRO" in
+  debian)
+    echo "%dokku ALL=(ALL) NOPASSWD:/usr/sbin/invoke-rc.d nginx reload, /usr/sbin/nginx -t" > /etc/sudoers.d/dokku-nginx
+    ;;
+
   ubuntu)
     echo "%dokku ALL=(ALL) NOPASSWD:/etc/init.d/nginx reload, /usr/sbin/nginx -t" > /etc/sudoers.d/dokku-nginx
     ;;
@@ -32,7 +36,19 @@ fi
 
 echo 'server_names_hash_bucket_size 512;' >| /etc/nginx/conf.d/server_names_hash_bucket_size.conf
 
+# make sure dokku can read the default log dir
+gpasswd -M "$(egrep ^adm: /etc/group | awk -F ":" '{ print $4 }')" dokku
+chgrp -R dokku /var/log/nginx
+chmod g+r /var/log/nginx
+
+# patch broken nginx 1.8.0 logrotate
+[[ -f /etc/logrotate.d/nginx ]] && sed -i -e 's/invoke-rc.d/service/g' /etc/logrotate.d/nginx
+
 case "$DOKKU_DISTRO" in
+  debian)
+    /usr/sbin/invoke-rc.d nginx start
+    ;;
+
   ubuntu)
     /etc/init.d/nginx start || true
     ;;

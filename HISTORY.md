@@ -1,6 +1,85 @@
 # History
 
+## 0.4.3
+
+This release was mainly a documentation release/bugfix.
+
+One major removal was is that as of 0.4.3, we no longer restart containers automatically on failure via docker. This feature was introduced in 0.4.0, and caused issues with duplicate containers being started on server reboot. Until the docker api for container restarts stabilizes, we will not be able to provide this functionality within Dokku.
+
+If desired, you may replicate this functionality using the official `docker-options` plugin.
+
+## Bug Fixes
+
+- #1560: @darklow Fixes issue where SSL and non-SSL templates cannot be used at the same time
+- #1566: @michaelshobbs Fix logic error in enabling nginx
+- #1568: @josegonzalez Remove 'connection closed' messages from dokku ssh client
+- #1574: @josegonzalez Ensure the user has a valid hostname set during installation
+- #1585: @michaelshobbs Ensure dokku can read nginx logs and don't remove other perms
+- #1589: @michaelshobbs Patch broken nginx 1.8.0 logrotate script
+- #1591: @michaelshobbs Remove docker restart policy until the docker api stabilizes
+- #1603: @josegonzalez Add missing plugin triggers
+Quiet client #1568
+
+## New Features
+
+- #1490: @vijayviji Add windows-specific vagrant setup
+- #1563: @kdomanski Cleanup all dead containers in dokku cleanup
+- #1590: @michaelshobbs Trigger docker-args-build for dockerfile deployments
+- #1600: @josegonzalez Upgrade to Herokuish 0.3.4
+- #1602: @josegonzalez Add pre-receive-app plugin trigger
+
+## Documentation
+
+- #1556: @josegonzalez Use proper cdn link for css asset
+- #1557: @josegonzalez Code styling changes
+- #1561: @josegonzalez Set dokku-acl compatibility to 0.4.0+
+- #1562: @josegonzalez Documentation Overhaul
+- #1573: @mateusortiz Add link to license
+- #1577: @Flink Add official redirect plugin
+- #1587: @josegonzalez Update "reporting other issues" to include `docker inspect`
+- #1598: @adamwolf Add missing bootstrap.sh step
+- #1599: @ssd532 Fix a few grammatical mistakes
+- #1601: @ojacquemart Fix typo
+- #1604: @josegonzalez Add every type of favicon to all templates
+
+## 0.4.2
+
+This release was mainly a documentation release, with a few notable features:
+
+- You can now use the commercial version of docker-engine with dokku.
+- You can now name your containers using the official `named-containers` plugin
+
+Huge thanks to @Flink for working on our official plugins and adding official [basic auth](https://github.com/dokku/dokku-http-auth), [couchdb](https://github.com/dokku/dokku-couchdb), and [site maintenance](https://github.com/dokku/dokku-maintenance) plugins!
+
+### Bug Fixes
+
+- #1530: @Flink Fix nginx configuration for SSL
+
+### New Features
+
+- #1515: @leonardodino Allow local prebuilt stack sourcing
+- #1536 #1537: @josegonzalez Add docker-engine-cs as docker-engine alternative
+- #1511: @Flink Add `named-containers` as a core plugin
+
+### Documentation
+
+- #1520: @kimausloos Add `dokku` command-prefix to `plugin:install` command
+- #1519: @3onyc Fix typos in documentation
+- #1521: @edm00se Use correct url to bootstrap.sh in README.md
+- #1522: @josegonzalez Avoid redirects and use raw.githubusercontent.com for github links
+- #1523 #1548: @callahad Make room for the longer bootstrap.sh URL
+- #1524: @callahad Document idiosyncracies with Linode
+- #1529: @pzula Adds helpful information regarding whitespacing when setting config
+- #1525 #1550: @josegonzalez Add gratipay shield to readme
+- #1544 #1545 #1547 #1551: @josegonzalez @Flink Update compatibility for community plugins
+- #1546: @josegonzalez Add missing description to history output in HISTORY.md
+- #1552 #1553 #1555: @josegonzalez Various documentation styling tweaks
+
 ## 0.4.1
+
+This release is primarily a bugfix and documentation update. In 0.4.0, we incorrectly handled setting environment variables in certain cases, resulting in misconfigured applications. We recommend that all users upgrade from 0.4.1 as soon as possible.
+
+One new feature is colorized logging output, which should make it easier to debug application logging output when deploying multiple processes.
 
 ### Bug Fixes
 

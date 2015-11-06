@@ -62,9 +62,10 @@ fi
 
 set -eo pipefail; [[ $DOKKU_TRACE ]] && set -x
 
+export DEBIAN_FRONTEND=noninteractive
+
 case "$DOKKU_DISTRO" in
-  ubuntu)
-    export DEBIAN_FRONTEND=noninteractive
+  debian|ubuntu)
     apt-get install --force-yes -qq -y nginx
     ;;
 
@@ -436,6 +437,24 @@ APP="$1";
 dokku postgres:destroy $APP
 ```
 
+### `post-stop`
+
+- Description: Can be used to run commands after an application is manually stopped
+- Invoked by: `dokku ps:stop`
+- Arguments: `$APP`
+- Example:
+
+```shell
+#!/usr/bin/env bash
+# Marks an application as manually stopped
+
+set -eo pipefail; [[ $DOKKU_TRACE ]] && set -x
+
+APP="$1";
+
+dokku config:set --no-restart $APP MANUALLY_STOPPED=1
+```
+
 ### `docker-args-build`
 
 - Description:
@@ -585,6 +604,25 @@ echo "$NEW_SUBDOMAIN.$VHOST"
 set -eo pipefail; [[ $DOKKU_TRACE ]] && set -x
 
 nginx -t
+```
+
+### `pre-receive-app`
+
+- Description: Allows you to customize the contents of an application directory before they are processed for deployment. The `IMAGE_SOURCE_TYPE` can be any of `[herokuish, dockerfile]`
+- Invoked by: `dokku git-hook`, `dokku tar-build-locked`
+- Arguments: `$APP $IMAGE_SOURCE_TYPE $TMP_WORK_DIR`
+- Example:
+
+```shell
+#!/usr/bin/env bash
+# Adds a file called `dokku-is-awesome` to the repository
+# the contents will be the application name
+
+set -eo pipefail; [[ $DOKKU_TRACE ]] && set -x
+
+APP="$1"; IMAGE_SOURCE_TYPE="$2"; TMP_WORK_DIR="$3"
+
+echo "$APP" > "$TMP_WORK_DIR/dokku-is-awesome"
 ```
 
 ### `receive-app`

@@ -3,7 +3,7 @@
     <h2>The smallest PaaS implementation you've ever seen</h2>
     <p>Docker powered mini-Heroku in around 200 lines of Bash</p>
     <div class="blurb-buttons">
-      <a class="btn btn-lg btn-warning" href="http://progrium.viewdocs.io/dokku/installation">View Documentation</a>
+      <a class="btn btn-lg btn-warning" href="/dokku/installation">View Documentation</a>
     </div>
   </div>
 </div>
@@ -15,12 +15,12 @@
       <p class="line">
         <span class="path">~</span>
         <span class="prompt">$</span>
-        <span class="command">wget https://raw.github.com/progrium/dokku/v0.4.1/bootstrap.sh</span>
+        <span class="command">wget https://raw.githubusercontent.com/progrium/dokku/v0.4.3/bootstrap.sh</span>
       </p>
       <p class="line">
         <span class="path">~</span>
         <span class="prompt">$</span>
-        <span class="command">sudo DOKKU_TAG=v0.4.1 bash bootstrap.sh</span>
+        <span class="command">sudo DOKKU_TAG=v0.4.3 bash bootstrap.sh</span>
       </p>
       <p class="line">
         <span class="output"># =&gt; Go to your server's IP and follow the web installer</span>

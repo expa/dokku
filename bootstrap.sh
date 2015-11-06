@@ -24,6 +24,11 @@ if ! command -v apt-get &>/dev/null; then
   exit 1
 fi
 
+hostname -f > /dev/null 2>&1 || {
+  echo "This installation script requires that you have a hostname set for the instance. Please set a hostname for 127.0.0.1 in your /etc/hosts"
+  exit 1
+}
+
 apt-get update -qq > /dev/null
 which curl > /dev/null || apt-get install -qq -y curl
 [[ $(lsb_release -sr) == "12.04" ]] && apt-get install -qq -y python-software-properties
@@ -47,6 +52,12 @@ dokku_install_package() {
   apt-get install -qq -y apt-transport-https
 
   echo "--> Installing docker"
+  if uname -r | grep -q linode; then
+    echo "--> NOTE: Using Linode? Docker might complain about missing AUFS support."
+    echo "    See http://progrium.viewdocs.io/dokku/getting-started/install/linode/"
+    echo "    Installation will continue in 10 seconds."
+    sleep 10
+  fi
   curl -sSL https://get.docker.com/ | sh
 
   echo "--> Installing dokku"

@@ -16,7 +16,7 @@ Let's take a quick look at the current dokku nginx plugin that's shipped with do
 # This command requires `root` permissions as the `install` and `install-dependencies`
 # plugin triggers may utilize commands such as `apt-get`. For non-core plugins, please
 # inspect those plugins before running the following command as `root` user.
-sudo plugin:install <git_url>
+sudo dokku plugin:install <git_url>
 
 # previous versions (0.3.x and below) of dokku require a manual process to install plugins
 cd /var/lib/dokku/plugins
@@ -34,6 +34,7 @@ The following plugins are available and provided by dokku maintainers. Where not
 
 | Plugin                                                                                            | Author                | Compatibility         |
 | ------------------------------------------------------------------------------------------------- | --------------------- | --------------------- |
+| [CouchDB (beta)](https://github.com/dokku/dokku-couchdb)                                          | [dokku][]             | 0.4.0+                |
 | [Elasticsearch (beta)](https://github.com/dokku/dokku-elasticsearch-plugin)                       | [dokku][]             | 0.4.0+                |
 | [MariaDB (beta)](https://github.com/dokku/dokku-mariadb-plugin)                                   | [dokku][]             | 0.4.0+                |
 | [Memcached (beta)](https://github.com/dokku/dokku-memcached-plugin)                               | [dokku][]             | 0.4.0+                |
@@ -43,8 +44,10 @@ The following plugins are available and provided by dokku maintainers. Where not
 | [RabbitMQ (beta)](https://github.com/dokku/dokku-rabbitmq-plugin)                                 | [dokku][]             | 0.4.0+                |
 | [Redis (beta)](https://github.com/dokku/dokku-redis-plugin)                                       | [dokku][]             | 0.4.0+                |
 | [RethinkDB (beta)](https://github.com/dokku/dokku-rethinkdb-plugin)                               | [dokku][]             | 0.4.0+                |
-| [Maintenance mode (beta)](https://github.com/dokku/dokku-maintenance)                             | [dokku][]             | 0.4.0+                |
+| [Copy Files to Image](https://github.com/dokku/dokku-copyfiles-to-image)                          | [dokku][]             | 0.4.0+                |
 | [HTTP Auth (beta)](https://github.com/dokku/dokku-http-auth)                                      | [dokku][]             | 0.4.0+                |
+| [Maintenance mode (beta)](https://github.com/dokku/dokku-maintenance)                             | [dokku][]             | 0.4.0+                |
+| [Redirect (beta)](https://github.com/dokku/dokku-redirect)                                        | [dokku][]             | 0.4.0+                |
 
 ## Community plugins
 
@@ -116,46 +119,33 @@ Note: The following plugins have been supplied by our community and may not have
 
 | Plugin                                                                                            | Author                | Compatibility         |
 | ------------------------------------------------------------------------------------------------- | --------------------- | --------------------- |
-| [MariaDB](https://github.com/Kloadut/dokku-md-plugin)                                             | [Kloadut][]           | Compatible with 0.2.0 |
-| [MariaDB (single container)](https://github.com/ohardy/dokku-mariadb)                             | [ohardy][]            | Compatible with 0.2.0 |
-| [MariaDB (single container)](https://github.com/krisrang/dokku-mariadb)                           | [krisrang][]          | 0.3.26+ |
-| [MySQL](https://github.com/hughfletcher/dokku-mysql-plugin)                                       | [hughfletcher][]      |                       |
-| [PostgreSQL](https://github.com/Kloadut/dokku-pg-plugin)                                          | [Kloadut][]           | Compatible with 0.2.0 |
-| [PostgreSQL](https://github.com/jlachowski/dokku-pg-plugin)                                       | [jlachowski][]        | IP & PORT available directly in linked app container env variables (requires link plugin)|
-| [PostgreSQL (single container)](https://github.com/jeffutter/dokku-postgresql-plugin)             | [jeffutter][]         | This plugin creates a single postgresql container that all your apps can use. Thus only one instance of postgresql running (good for servers without a ton of memory). |
-| [PostgreSQL (single container)](https://github.com/ohardy/dokku-psql)                             | [ohardy][]            | Compatible with 0.2.0 |
-| [PostgreSQL (single container)](https://github.com/Flink/dokku-psql-single-container)             | [Flink][]             | 0.3.26+. Single Postgresql container with official Postgresql docker image |
-| [PostGIS](https://github.com/fermuch/dokku-pg-plugin)                                             | [fermuch][]           |                       |
+| [MariaDB](https://github.com/Kloadut/dokku-md-plugin)                                             | [Kloadut][]           | 0.3.x                  |
+| [MariaDB (single container)](https://github.com/ohardy/dokku-mariadb)                             | [ohardy][]            | 0.3.x                  |
+| [MariaDB (single container)](https://github.com/krisrang/dokku-mariadb)                           | [krisrang][]          | 0.3.26+                |
+| [PostgreSQL](https://github.com/jlachowski/dokku-pg-plugin)                                       | [jlachowski][]         | 0.3.x                  |
+| [PostgreSQL (single container)](https://github.com/ohardy/dokku-psql)                             | [ohardy][]            | 0.3.x                  |
+| [PostgreSQL (single container)](https://github.com/Flink/dokku-psql-single-container)             | [Flink][]             | 0.3.26+                |
 
 #### Caching
 
 | Plugin                                                                                            | Author                | Compatibility         |
 | ------------------------------------------------------------------------------------------------- | --------------------- | --------------------- |
-| [Memcached](https://github.com/Flink/dokku-memcached-plugin)                                      | [Flink][]             | 0.4.0+ |
-| [Redis](https://github.com/luxifer/dokku-redis-plugin)                                            | [luxifer][]           |                       |
-| [Redis](https://github.com/sekjun9878/dokku-redis-plugin)                                         | [sekjun9878][]        | 0.3.26+. A better Redis plugin with automatic instance creation and Dokku Link support
-| [Redis (single container)](https://github.com/ohardy/dokku-redis)                                 | [ohardy][]            | Compatible with 0.2.0 |
+| [Redis](https://github.com/sekjun9878/dokku-redis-plugin)                                         | [sekjun9878][]         | 0.3.26+                |
+| [Redis (single container)](https://github.com/ohardy/dokku-redis)                                 | [ohardy][]            | 0.3.x                  |
 | [Varnish](https://github.com/Zenedith/dokku-varnish-plugin)                                       | [Zenedith][]          | Varnish cache between nginx and application with base configuration|
 
 #### Queuing
 
 | Plugin                                                                                            | Author                | Compatibility         |
 | ------------------------------------------------------------------------------------------------- | --------------------- | --------------------- |
-| [RabbitMQ](https://github.com/jlachowski/dokku-rabbitmq-plugin)                                   | [jlachowski][]        | IP & PORT available directly in linked app container env variables (requires link plugin)|
-| [RabbitMQ (single container)](https://github.com/jlachowski/dokku-rabbitmq-single-plugin)         | [jlachowski][]        | IP & PORT available directly in linked app container env variables (requires link plugin)|
+| [RabbitMQ](https://github.com/jlachowski/dokku-rabbitmq-plugin)                                   | [jlachowski][]        | 0.3.x                  |
+| [RabbitMQ (single container)](https://github.com/jlachowski/dokku-rabbitmq-single-plugin)         | [jlachowski][]        | 0.3.x                  |
 
 #### Other
 
 | Plugin                                                                                            | Author                | Compatibility         |
 | ------------------------------------------------------------------------------------------------- | --------------------- | --------------------- |
-| [CouchDB](https://github.com/racehub/dokku-couchdb-plugin)                                        | [RaceHub][]           | Compatible with 0.2.0 |
-| [CouchDB (multi containers)](https://github.com/Flink/dokku-couchdb-multi-containers)             | [Flink][]             | 0.3.26+ |
-| [Elasticsearch](https://github.com/robv/dokku-elasticsearch)                                      | [robv][]              | Not compatible with >= 0.3.0 (still uses /home/git) |
-| [Elasticsearch](https://github.com/blag/dokku-elasticsearch-plugin)<sup>1</sup>                   | [blag][]              | Compatible with 0.2.0 |
-| [MongoDB (single container)](https://github.com/jeffutter/dokku-mongodb-plugin)                   | [jeffutter][]         |                       |
-| [Neo4j](https://github.com/Aomitayo/dokku-neo4j-plugin)                                           | [Aomitayo][]          |                       |
-| [RethinkDB](https://github.com/stuartpb/dokku-rethinkdb-plugin)                                   | [stuartpb][]          | 2014-02-22: targeting dokku @ [latest][217d00a]; will fail with Dokku earlier than [28de3ec][]. |
-| [RiakCS (single container)](https://github.com/jeffutter/dokku-riakcs-plugin)                     | [jeffutter][]         | Incompatible with 0.2.0 (checked at [dccee02][]) |
+| [RethinkDB](https://github.com/stuartpb/dokku-rethinkdb-plugin)                                   | [stuartpb][]          | 0.3.x                  |
 
 [dccee02]: https://github.com/jeffutter/dokku-riakcs-plugin/commit/dccee02702e7001851917b7814e78a99148fb709
 
@@ -165,11 +155,11 @@ Note: The following plugins have been supplied by our community and may not have
 | ------------------------------------------------------------------------------------------------- | --------------------- | --------------------- |
 | [Circus](https://github.com/apmorton/dokku-circus)                                                | [apmorton][]          |                       |
 | [Forego](https://github.com/iskandar/dokku-forego)                                                | [iskandar][]          | Compatible with 0.2.x |
-| [Forego](https://github.com/Flink/dokku-forego)                                                   | [Flink][]             | 0.4.0++ |
-| [Logging Supervisord](https://github.com/sehrope/dokku-logging-supervisord)                       | [sehrope][]           | Works with dokku @ [c77cbf1][] - no 0.2.0 compatibility |
-| [Monit](https://github.com/cjblomqvist/dokku-monit)                                               | [cjblomqvist][]       |                       |
-| [Shoreman ](https://github.com/statianzo/dokku-shoreman)                                          | [statianzo][]         | Compatible with 0.2.0 |
-| [Supervisord](https://github.com/statianzo/dokku-supervisord)                                     | [statianzo][]         | Compatible with 0.2.0 |
+| [Forego](https://github.com/Flink/dokku-forego)                                                   | [Flink][]             | 0.4.0+                |
+| [Logging Supervisord](https://github.com/sehrope/dokku-logging-supervisord)                       | [sehrope][]           | 0.4.0+                |
+| [Monit](https://github.com/cjblomqvist/dokku-monit)                                               | [cjblomqvist][]       | 0.3.x                 |
+| [Shoreman ](https://github.com/statianzo/dokku-shoreman)                                          | [statianzo][]         | 0.3.x                 |
+| [Supervisord](https://github.com/statianzo/dokku-supervisord)                                     | [statianzo][]         | 0.3.x                 |
 
 [c77cbf1]: https://github.com/progrium/dokku/commit/c77cbf1d3ae07f0eafb85082ed7edcae9e836147
 [28de3ec]: https://github.com/progrium/dokku/commit/28de3ecaa3231a223f83fd8d03f373308673bc40
@@ -182,19 +172,18 @@ Note: The following plugins have been supplied by our community and may not have
 | [Dokku Copy App Config Files](https://github.com/alexkruegger/dokku-app-configfiles)              | [alexkruegger][]            | Compatible with 0.3.17+ |
 | [Dokku Copy App Config Files](https://github.com/heichblatt/dokku-supply-config)                  | [heichblatt][]        |                       |
 | [Dokku Name](https://github.com/alex-sherwin/dokku-name)                                          | [alex-sherwin][]      | dokku >= [c77cbf1][]  |
-| [Dokku Registry](https://github.com/agco-adm/dokku-registry)<sup>1</sup>                          | [agco-adm][]          |                       |
-| [git rev-parse HEAD in env](https://github.com/cjblomqvist/dokku-git-rev)                         | [cjblomqvist][]       | Compatible with 0.3.0 |
-| [Graduate (Environment Management)](https://github.com/glassechidna/dokku-graduate)               | [Benjamin-Dobell][]   | dokku >= v0.3.14      |
-| [HTTP Auth Secure Apps](https://github.com/matto1990/dokku-secure-apps)                           | [matto1990][]         | Works with v0.2.3     |
+| [Dokku Registry](https://github.com/agco-adm/dokku-registry)<sup>1</sup>                          | [agco-adm][]          | 0.4.0+                |
+| [git rev-parse HEAD in env](https://github.com/cjblomqvist/dokku-git-rev)                         | [cjblomqvist][]       | 0.4.0+                |
+| [Graduate (Environment Management)](https://github.com/glassechidna/dokku-graduate)               | [Benjamin-Dobell][]   | 0.3.14+                 |
+| [HTTP Auth Secure Apps](https://github.com/matto1990/dokku-secure-apps)                           | [matto1990][]         | 0.4.0+                |
 | [Hostname](https://github.com/michaelshobbs/dokku-hostname)                                       | [michaelshobbs][]     | 0.4.0+                |
 | [Multi-Buildpack](https://github.com/pauldub/dokku-multi-buildpack)                               | [pauldub][]           |                       |
-| [Named-containers](https://github.com/Flink/dokku-named-containers)                               | [Flink][]             | 0.4.0+                |
 | [Nuke Containers](https://github.com/heichblatt/dokku-nuke)                                       | [heichblatt][]        |                       |
 | [Open App Ports](https://github.com/heichblatt/dokku-ports)                                       | [heichblatt][]        |                       |
 | [Pre-Deploy Tasks](https://github.com/michaelshobbs/dokku-app-predeploy-tasks)                    | [michaelshobbs][]     | 0.4.0+                |
-| [SSH Deployment Keys](https://github.com/cedricziel/dokku-deployment-keys)<sup>2</sup>            | [cedricziel][]        | 2014-01-17: compatible with upstream/master |
-| [SSH Hostkeys](https://github.com/cedricziel/dokku-hostkeys-plugin)<sup>3</sup>                   | [cedricziel][]        | 2014-01-17: compatible with upstream/master |
-| [Volume (persistent storage)](https://github.com/ohardy/dokku-volume)                             | [ohardy][]            | Compatible with 0.2.0 |
+| [SSH Deployment Keys](https://github.com/cedricziel/dokku-deployment-keys)<sup>2</sup>            | [cedricziel][]        | 0.3.x                 |
+| [SSH Hostkeys](https://github.com/cedricziel/dokku-hostkeys-plugin)<sup>3</sup>                   | [cedricziel][]        | 0.3.x                 |
+| [Volume (persistent storage)](https://github.com/ohardy/dokku-volume)                             | [ohardy][]            | 0.3.x                 |
 
 [217d00a]: https://github.com/progrium/dokku/commit/217d00a1bc47a7e24d8847617bb08a1633025fc7
 
@@ -223,7 +212,7 @@ Note: The following plugins have been supplied by our community and may not have
 | [Node](https://github.com/ademuk/dokku-nodejs)                                                    | [ademuk][]            |                       |
 | [Reset mtime](https://github.com/mixxorz/dokku-docker-reset-mtime)                                | [mixxorz][]           | 0.3.15+, Dockerfile support |
 | [Slack Notifications](https://github.com/ribot/dokku-slack)                                       | [ribot][]             | 0.4.0+                |
-| [User ACL](https://github.com/mlebkowski/dokku-acl)                                               | [Maciej Łebkowski][]  |                       |
+| [User ACL](https://github.com/mlebkowski/dokku-acl)                                               | [Maciej Łebkowski][]  | 0.4.0+                |
 | [Webhooks](https://github.com/nickstenning/dokku-webhooks)                                        | [nickstenning][]      |                       |
 | [Wordpress](https://github.com/dudagroup/dokku-wordpress-template)                                | [abossard][]          | Dokku dev, mariadb, volume, domains |
 
@@ -243,6 +232,7 @@ The following plugins have been removed as their functionality is now in Dokku C
 | [List Containers](https://github.com/heichblatt/dokku-list)                                       | [heichblatt][]         | v0.3.14 (ps plugin              |
 | [Link Containers](https://github.com/rlaneve/dokku-link)                                          | [rlaneve][]           | v0.3.17 (docker-options plugin) |
 | [Multiple Domains](https://github.com/wmluke/dokku-domains-plugin)<sup>1</sup>                    | [wmluke][]            | v0.3.10 (domains plugin)        |
+| [Named-containers](https://github.com/Flink/dokku-named-containers)                               | [Flink][]             | v0.4.2 (named-containers plugin) |
 | [Nginx-Alt](https://github.com/mikexstudios/dokku-nginx-alt)                                      | [mikexstudios][]      | v0.3.10 (domains plugin)        |
 | [Persistent Storage](https://github.com/dyson/dokku-persistent-storage)                           | [dyson][]             | v0.3.17 (docker-options plugin) |
 | [PrimeCache](https://github.com/darkpixel/dokku-prime-cache)                                      | [darkpixel][]         | v0.3.0 (zero downtime deploys)  |
@@ -265,3 +255,15 @@ The following plugins are no longer maintained by their developers.
 | Plugin                                                                                            | Author                | Compatibility         |
 | ------------------------------------------------------------------------------------------------- | --------------------- | --------------------- |
 | [app-url](https://github.com/mikecsh/dokku-app-url)                                               | [mikecsh][]           | Works with 0.2.0      |
+| [CouchDB (multi containers)](https://github.com/Flink/dokku-couchdb-multi-containers)             | [Flink][]             | 0.4.0+ |
+| [CouchDB](https://github.com/racehub/dokku-couchdb-plugin)                                        | [RaceHub][]           | Compatible with 0.2.0 |
+| [Elasticsearch](https://github.com/robv/dokku-elasticsearch)                                      | [robv][]              | Not compatible with >= 0.3.0 (still uses /home/git) |
+| [Elasticsearch](https://github.com/blag/dokku-elasticsearch-plugin)<sup>1</sup>                   | [blag][]              | Compatible with 0.2.0 |
+| [Memcached](https://github.com/Flink/dokku-memcached-plugin)                                      | [Flink][]             | 0.4.0+ |
+| [MongoDB (single container)](https://github.com/jeffutter/dokku-mongodb-plugin)                   | [jeffutter][]         |                       |
+| [MySQL](https://github.com/hughfletcher/dokku-mysql-plugin)                                       | [hughfletcher][]      |                       |
+| [Neo4j](https://github.com/Aomitayo/dokku-neo4j-plugin)                                           | [Aomitayo][]          |                       |
+| [PostGIS](https://github.com/fermuch/dokku-pg-plugin)                                             | [fermuch][]           |                       |
+| [PostgreSQL (single container)](https://github.com/jeffutter/dokku-postgresql-plugin)             | [jeffutter][]         | This plugin creates a single postgresql container that all your apps can use. Thus only one instance of postgresql running (good for servers without a ton of memory). |
+| [RiakCS (single container)](https://github.com/jeffutter/dokku-riakcs-plugin)                     | [jeffutter][]         | Incompatible with 0.2.0 (checked at [dccee02][]) |
+| [Redis](https://github.com/luxifer/dokku-redis-plugin)                                            | [luxifer][]           |                       |

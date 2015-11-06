@@ -10,6 +10,28 @@
     <link href="https://fonts.googleapis.com/css?family=Montserrat:400,700" rel="stylesheet" type="text/css">
     <title>Dokku - The smallest PaaS implementation you've ever seen</title>
 
+    <link rel="apple-touch-icon" sizes="57x57" href="https://cdn.rawgit.com/progrium/dokku/v0.4.3/docs/assets/favicons/apple-touch-icon-57x57.png">
+    <link rel="apple-touch-icon" sizes="60x60" href="https://cdn.rawgit.com/progrium/dokku/v0.4.3/docs/assets/favicons/apple-touch-icon-60x60.png">
+    <link rel="apple-touch-icon" sizes="72x72" href="https://cdn.rawgit.com/progrium/dokku/v0.4.3/docs/assets/favicons/apple-touch-icon-72x72.png">
+    <link rel="apple-touch-icon" sizes="76x76" href="https://cdn.rawgit.com/progrium/dokku/v0.4.3/docs/assets/favicons/apple-touch-icon-76x76.png">
+    <link rel="apple-touch-icon" sizes="114x114" href="https://cdn.rawgit.com/progrium/dokku/v0.4.3/docs/assets/favicons/apple-touch-icon-114x114.png">
+    <link rel="apple-touch-icon" sizes="120x120" href="https://cdn.rawgit.com/progrium/dokku/v0.4.3/docs/assets/favicons/apple-touch-icon-120x120.png">
+    <link rel="apple-touch-icon" sizes="144x144" href="https://cdn.rawgit.com/progrium/dokku/v0.4.3/docs/assets/favicons/apple-touch-icon-144x144.png">
+    <link rel="apple-touch-icon" sizes="152x152" href="https://cdn.rawgit.com/progrium/dokku/v0.4.3/docs/assets/favicons/apple-touch-icon-152x152.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="https://cdn.rawgit.com/progrium/dokku/v0.4.3/docs/assets/favicons/apple-touch-icon-180x180.png">
+    <link rel="icon" type="image/png" href="https://cdn.rawgit.com/progrium/dokku/v0.4.3/docs/assets/favicons/favicon-32x32.png" sizes="32x32">
+    <link rel="icon" type="image/png" href="https://cdn.rawgit.com/progrium/dokku/v0.4.3/docs/assets/favicons/android-chrome-192x192.png" sizes="192x192">
+    <link rel="icon" type="image/png" href="https://cdn.rawgit.com/progrium/dokku/v0.4.3/docs/assets/favicons/favicon-96x96.png" sizes="96x96">
+    <link rel="icon" type="image/png" href="https://cdn.rawgit.com/progrium/dokku/v0.4.3/docs/assets/favicons/favicon-16x16.png" sizes="16x16">
+    <link rel="manifest" href="https://cdn.rawgit.com/progrium/dokku/v0.4.3/docs/assets/favicons/manifest.json">
+    <link rel="shortcut icon" href="https://cdn.rawgit.com/progrium/dokku/v0.4.3/docs/assets/favicons/favicon.ico">
+    <meta name="apple-mobile-web-app-title" content="Dokku">
+    <meta name="application-name" content="Dokku">
+    <meta name="msapplication-TileColor" content="#da532c">
+    <meta name="msapplication-TileImage" content="https://cdn.rawgit.com/progrium/dokku/v0.4.3/docs/assets/favicons/mstile-144x144.png">
+    <meta name="msapplication-config" content="https://cdn.rawgit.com/progrium/dokku/v0.4.3/docs/assets/favicons/browserconfig.xml">
+    <meta name="theme-color" content="#ffffff">
+
     <link href="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/3.3.5/css/bootstrap.min.css" rel="stylesheet">
     <style type="text/css">
       body{padding-bottom:40px;color:#5a5a5a}
@@ -18,7 +40,7 @@
       .header .heading{color:#fff;font-size:23px;margin:0;padding:0}
       .blurb{color:#424242;background-color:#ededed;background-image:url(./assets/gplaypattern.png);padding:45px 0;text-align:center}
       .blurb p{font-size:17px;font-weight:300;margin:18px 0;text-align:center}
-      .quickstart-code{display:block;font-size:12px;line-height:1.3em;margin:45px auto;max-width:650px;padding:0}
+      .quickstart-code{display:block;font-size:12px;line-height:1.3em;margin:45px auto;max-width:750px;padding:0}
       .quickstart-code .title{background-color:#dfdfdf;background-image:linear-gradient(top,#f7f7f7 0%,#dfdfdf 7%,#ccc 100%);border-bottom:1px solid #111;color:#444;display:block;font-weight:400;font-size:14px;margin:0 20px;padding:3px 0;text-align:center;text-shadow:0 1px 0 rgba(255,255,255,0.5);border-radius:5px 5px 0 0;box-shadow:0 3px 0 rgba(0,0,0,0.5)}
       .quickstart-code .shell{background-color:#171717;font-family:Menlo,Consolas,"Courier New",Courier,"Liberation Mono",monospace;margin:0 20px;padding:20px;text-shadow:none;border-radius:0 0 5px 5px;box-shadow:0 5px 30px rgba(0,0,0,0.3)}
       .quickstart-code .line{display:block;margin:0;padding:0}
@@ -52,7 +74,7 @@
         <h2>The smallest PaaS implementation you've ever seen</h2>
         <p>Docker powered mini-Heroku in around 200 lines of Bash</p>
         <div class="blurb-buttons">
-          <a class="btn btn-lg btn-warning" href="http://progrium.viewdocs.io/dokku/installation">View Documentation</a>
+          <a class="btn btn-lg btn-warning" href="/dokku/installation">View Documentation</a>
         </div>
       </div>
     </div>
@@ -64,12 +86,12 @@
           <p class="line">
             <span class="path">~</span>
             <span class="prompt">$</span>
-            <span class="command">wget https://raw.github.com/progrium/dokku/v0.4.1/bootstrap.sh</span>
+            <span class="command">wget https://raw.githubusercontent.com/progrium/dokku/v0.4.3/bootstrap.sh</span>
           </p>
           <p class="line">
             <span class="path">~</span>
             <span class="prompt">$</span>
-            <span class="command">sudo DOKKU_TAG=v0.4.1 bash bootstrap.sh</span>
+            <span class="command">sudo DOKKU_TAG=v0.4.3 bash bootstrap.sh</span>
           </p>
           <p class="line">
             <span class="output"># =&gt; Go to your server's IP and follow the web installer</span>
