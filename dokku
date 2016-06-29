@@ -2,7 +2,15 @@
 set -eo pipefail
 shopt -s nullglob
 
+export DOKKU_ROOT=${DOKKU_ROOT:=~dokku}
+[[ -f $DOKKU_ROOT/dokkurc ]] && source "$DOKKU_ROOT/dokkurc"
+[[ -d $DOKKU_ROOT/.dokkurc ]] && for f in $DOKKU_ROOT/.dokkurc/*; do source "$f"; done
+[[ $DOKKU_TRACE ]] && set -x
+
 case "$(lsb_release -si)" in
+  Arch)
+    export DOKKU_DISTRO=${DOKKU_DISTRO:="arch"}
+    ;;
   Debian)
     export DOKKU_DISTRO=${DOKKU_DISTRO:="debian"}
     ;;
@@ -12,7 +20,6 @@ case "$(lsb_release -si)" in
 esac
 
 export DOKKU_IMAGE=${DOKKU_IMAGE:="gliderlabs/herokuish"}
-export DOKKU_ROOT=${DOKKU_ROOT:=~dokku}
 export DOKKU_LIB_ROOT=${DOKKU_LIB_PATH:="/var/lib/dokku"}
 
 export PLUGIN_PATH=${PLUGIN_PATH:="$DOKKU_LIB_ROOT/plugins"}
@@ -29,18 +36,18 @@ export DOKKU_VALID_EXIT=0
 export DOKKU_LOGS_DIR=${DOKKU_LOGS_DIR:="/var/log/dokku"}
 export DOKKU_EVENTS_LOGFILE=${DOKKU_EVENTS_LOGFILE:="$DOKKU_LOGS_DIR/events.log"}
 
+export DOKKU_CONTAINER_LABEL=dokku
+export DOKKU_GLOBAL_RUN_ARGS="--label=$DOKKU_CONTAINER_LABEL"
+
 source "$PLUGIN_CORE_AVAILABLE_PATH/common/functions"
-
-[[ -f $DOKKU_ROOT/dokkurc ]] && source $DOKKU_ROOT/dokkurc
-[[ -d $DOKKU_ROOT/.dokkurc ]] && for f in $DOKKU_ROOT/.dokkurc/*; do source $f; done
-
-[[ $DOKKU_TRACE ]] && set -x
 
 parse_args "$@"
 args=("$@")
 if [[ "${args[0]}" =~ ^--.* ]]; then
   for arg in "$@"; do
-    if [[ "$arg" =~ ^--.* ]]; then
+    if [[ "$arg" == "--app" ]]; then
+      shift 2
+    elif [[ "$arg" =~ ^--.* ]]; then
       shift 1
     else
       break
@@ -49,207 +56,156 @@ if [[ "${args[0]}" =~ ^--.* ]]; then
 fi
 ! has_tty && DOKKU_QUIET_OUTPUT=1
 
-if [[ $(id -un) != "dokku" && $1 != plugin:*install* && $1 != "plugin:update" ]]; then
-  sudo -u dokku -E -H $0 "$@"
-  exit
+if [[ $(id -un) != "dokku" ]] && [[ ! $1 =~ plugin:* ]]; then
+  export SSH_USER=$(id -un)
+  sudo -u dokku -E -H "$0" "$@"
+  exit $?
+fi
+
+if [[ $(id -un) != "root" && $1 =~ ^plugin:.* ]]; then
+  dokku_log_fail "plugin:* commands must be run as root"
 fi
 
 if [[ -n "$SSH_ORIGINAL_COMMAND" ]]; then
   export -n SSH_ORIGINAL_COMMAND
   if [[ $1 =~ config-* ]] || [[ $1 =~ docker-options* ]]; then
+    # shellcheck disable=SC2086
     xargs $0 <<<$SSH_ORIGINAL_COMMAND
     exit $?
   else
+    set -f
+    # shellcheck disable=SC2086
     $0 $SSH_ORIGINAL_COMMAND
+    set +f
     exit $?
   fi
 fi
 
-case "$1" in
-  receive)
-    APP="$2"; IMAGE=$(get_app_image_name $APP); IMAGE_SOURCE_TYPE="$3"; TMP_WORK_DIR="$4"
-    dokku_log_info1 "Cleaning up..."
-    docker_cleanup
-    dokku_log_info1 "Building $APP from $IMAGE_SOURCE_TYPE..."
-    dokku build "$APP" "$IMAGE_SOURCE_TYPE" "$TMP_WORK_DIR"
-    release_and_deploy "$APP"
-    ;;
+if ! dokku_auth "$@" ; then
+  dokku_log_fail "Access denied"
+  exit 1
+fi
 
-  deploy)
-    [[ -z $2 ]] && dokku_log_fail "Please specify an app to deploy"
-    APP="$2"; IMAGE_TAG="$3"; IMAGE=$(get_app_image_name $APP $IMAGE_TAG)
-    verify_app_name "$APP"
-    plugn trigger pre-deploy $APP $IMAGE_TAG
+execute_dokku_cmd() {
+  declare desc="executes dokku sub-commands"
+  local PLUGIN_NAME="$1"
+  local PLUGIN_CMD=$PLUGIN_NAME
+  local implemented=0; local script
+  local argv=("$@")
 
-    is_image_herokuish_based "$IMAGE" && DOKKU_HEROKUISH=true
-    DOKKU_SCALE_FILE="$DOKKU_ROOT/$APP/DOKKU_SCALE"
-    oldids=$(get_app_container_ids $APP)
+  case "$PLUGIN_NAME" in
+    events|events:*)
+      local PLUGIN_NAME=${PLUGIN_NAME/events/20_events}
+      ;;
+    nginx|nginx:*)
+      local PLUGIN_NAME=${PLUGIN_NAME/nginx/nginx-vhosts}
+      ;;
+    deploy|delete|ls|run|cleanup)
+      local PLUGIN_NAME="00_dokku-standard"
+      ;;
+    trace|url|urls|report|version)
+      local PLUGIN_NAME="00_dokku-standard"
+      ;;
+  esac
 
-    DOKKU_APP_SKIP_ALL_CHECKS=$(dokku config:get $APP DOKKU_SKIP_ALL_CHECKS || true)
-    DOKKU_APP_SKIP_DEFAULT_CHECKS=$(dokku config:get $APP DOKKU_SKIP_DEFAULT_CHECKS || true)
-    DOKKU_GLOBAL_SKIP_ALL_CHECKS=$(dokku config:get --global DOKKU_SKIP_ALL_CHECKS || true)
-    DOKKU_GLOBAL_SKIP_DEFAULT_CHECKS=$(dokku config:get --global DOKKU_SKIP_DEFAULT_CHECKS || true)
-
-    DOKKU_SKIP_ALL_CHECKS=${DOKKU_APP_SKIP_ALL_CHECKS:="$DOKKU_GLOBAL_SKIP_ALL_CHECKS"}
-    DOKKU_SKIP_DEFAULT_CHECKS=${DOKKU_APP_SKIP_DEFAULT_CHECKS:="$DOKKU_GLOBAL_SKIP_DEFAULT_CHECKS"}
-
-    DOKKU_DEFAULT_DOCKER_ARGS=$(: | plugn trigger docker-args-deploy $APP $IMAGE_TAG)
-
-    while read -r line || [[ -n "$line" ]]; do
-      TRIM=${line%#*}
-      PROC_TYPE=${TRIM%%=*}
-      PROC_COUNT=${TRIM#*=}
-      CONTAINER_INDEX=1
-
-      while [[ $CONTAINER_INDEX -le $PROC_COUNT ]]; do
-        id=""; port=""; ipaddr=""
-        DOKKU_CONTAINER_ID_FILE="$DOKKU_ROOT/$APP/CONTAINER.$PROC_TYPE.$CONTAINER_INDEX"
-        DOKKU_IP_FILE="$DOKKU_ROOT/$APP/IP.$PROC_TYPE.$CONTAINER_INDEX"
-        DOKKU_PORT_FILE="$DOKKU_ROOT/$APP/PORT.$PROC_TYPE.$CONTAINER_INDEX"
-
-        # start the app
-        DOCKER_ARGS="$DOKKU_DEFAULT_DOCKER_ARGS"
-        DOCKER_ARGS+=" -e DYNO='$PROC_TYPE.$CONTAINER_INDEX' "
-        [[ "$DOKKU_TRACE" ]] && DOCKER_ARGS+=" -e TRACE=true "
-        BIND_EXTERNAL=$(plugn trigger bind-external-ip $APP)
-
-        [[ -n "$DOKKU_HEROKUISH" ]] && START_CMD="/start $PROC_TYPE"
-
-        if [[ -z "$DOKKU_HEROKUISH" ]]; then
-          DOKKU_DOCKERFILE_PORT=$(dokku config:get $APP DOKKU_DOCKERFILE_PORT || true)
-          START_CMD=$(dokku config:get $APP DOKKU_DOCKERFILE_START_CMD || $START_CMD)
-        fi
-
-        if [[ "$PROC_TYPE" == "web" ]]; then
-          port=${DOKKU_DOCKERFILE_PORT:=5000}
-          if [[ "$BIND_EXTERNAL" = "true" ]]; then
-            id=$(docker run -d -p $port -e PORT=$port $DOCKER_ARGS $IMAGE $START_CMD)
-            port=$(docker port $id $port | sed 's/[0-9.]*://')
-            ipaddr=127.0.0.1
-          else
-            id=$(docker run -d -e PORT=$port $DOCKER_ARGS $IMAGE $START_CMD)
-            ipaddr=$(docker inspect --format '{{ .NetworkSettings.IPAddress }}' $id)
-          fi
-        else
-          id=$(docker run -d $DOCKER_ARGS $IMAGE $START_CMD)
-        fi
-
-        # if we can't post-deploy successfully, kill new container
-        kill_new() {
-          docker inspect $id &> /dev/null && docker stop $id > /dev/null && docker kill $id > /dev/null
-          trap - INT TERM EXIT
-          kill -9 $$
-        }
-
-        # run checks first, then post-deploy hooks, which switches Nginx traffic
-        if [[ "$DOKKU_SKIP_ALL_CHECKS" = "true" ]]; then
-          dokku_log_info1 "Skipping pre-flight checks"
-        else
-          trap kill_new INT TERM EXIT
-          dokku_log_info1 "Running pre-flight checks"
-          plugn trigger check-deploy  $APP $id $PROC_TYPE $port $ipaddr
-          trap -        INT TERM EXIT
-        fi
-
-        # now using the new container
-        [[ -n "$id" ]] && echo $id > "$DOKKU_CONTAINER_ID_FILE"
-        [[ -n "$ipaddr" ]] && echo $ipaddr > "$DOKKU_IP_FILE"
-        [[ -n "$port" ]] && echo $port > "$DOKKU_PORT_FILE"
-        [[ -n "$port" ]] && echo "http://$(< "$DOKKU_ROOT/HOSTNAME"):$port" > "$DOKKU_ROOT/$APP/URL"
-
-        # cleanup pre-migration files
-        rm -f $DOKKU_ROOT/$APP/CONTAINER $DOKKU_ROOT/$APP/IP $DOKKU_ROOT/$APP/PORT
-
-        CONTAINER_INDEX=$(( CONTAINER_INDEX + 1 ))
-      done
-      # cleanup when we scale down
-      if [[ "$PROC_COUNT" == 0 ]]; then
-        CONTAINER_IDX_OFFSET=0
+  if [[ "$(readlink -f "$PLUGIN_ENABLED_PATH/${PLUGIN_NAME%%:*}")" == *core-plugins* ]] ; then
+    [[ ${argv[0]} == "$PLUGIN_CMD" ]] && shift 1
+    if [[ ! -z $DOKKU_APP_NAME ]]; then
+      if [[ "$PLUGIN_CMD" == config* ]] && [[ ${argv[1]} == "--no-restart" ]]; then
+        shift 1
+        set -- "--no-restart" "$DOKKU_APP_NAME" "$@"
       else
-        CONTAINER_IDX_OFFSET=$((PROC_COUNT + 1))
+        set -- "$DOKKU_APP_NAME" "$@"
       fi
-      for container_state_filetype in CONTAINER IP PORT; do
-        cd $DOKKU_ROOT/$APP
-        find . -maxdepth 1 -name "$container_state_filetype.$PROC_TYPE.*" -printf "%f\n" | sort -t . -k 3 -n | tail -n +$CONTAINER_IDX_OFFSET | xargs rm -f
-      done
-    done < "$DOKKU_SCALE_FILE"
-
-    dokku_log_info1 "Running post-deploy"
-    plugn trigger post-deploy $APP $port $ipaddr
-
-    # kill the old container
-    if [[ -n "$oldids" ]]; then
-
-      if [[ -z "$DOKKU_WAIT_TO_RETIRE" ]]; then
-        DOKKU_APP_DOKKU_WAIT_TO_RETIRE=$(dokku config:get $APP DOKKU_WAIT_TO_RETIRE || true)
-        DOKKU_GLOBAL_DOKKU_WAIT_TO_RETIRE=$(dokku config:get --global DOKKU_WAIT_TO_RETIRE || true)
-        DOKKU_WAIT_TO_RETIRE=${DOKKU_APP_DOKKU_WAIT_TO_RETIRE:="$DOKKU_GLOBAL_DOKKU_WAIT_TO_RETIRE"}
-      fi
-
-      # Let the old container finish processing requests, before terminating it
-      WAIT="${DOKKU_WAIT_TO_RETIRE:-60}"
-      dokku_log_info1 "Shutting down old containers in $WAIT seconds"
-      for oldid in $oldids; do
-        dokku_log_info2 "$oldid"
-      done
-      (
-        exec >/dev/null 2>/dev/null </dev/null
-        trap '' INT HUP
-        sleep $WAIT
-        for oldid in $oldids; do
-          # Attempt to stop, if that fails, then force a kill as docker seems
-          # to not send SIGKILL as the docs would indicate. If that fails, move
-          # on to the next.
-          docker stop $oldid \
-          || docker kill $oldid \
-          || plugn trigger retire-container-failed $APP # plugin trigger for event logging
-        done
-      ) & disown -a
-      # Use trap since disown/nohup don't seem to keep child alive
-      # Give child process just enough time to set the traps
-      sleep 0.1
     fi
-    ;;
+    set -- "$PLUGIN_CMD" "$@"
+  fi
 
-  cleanup)
-    docker_cleanup
-    ;;
+  if [[ -x $PLUGIN_ENABLED_PATH/$PLUGIN_NAME/subcommands/default ]]; then
+    "$PLUGIN_ENABLED_PATH/$PLUGIN_NAME/subcommands/default" "$@"
+    implemented=1
+  elif [[ -x $PLUGIN_ENABLED_PATH/$PLUGIN_NAME/subcommands/$PLUGIN_CMD ]]; then
+    "$PLUGIN_ENABLED_PATH/$PLUGIN_NAME/subcommands/$PLUGIN_CMD" "$@"
+    implemented=1
+  elif [[ -x $PLUGIN_ENABLED_PATH/${PLUGIN_NAME%%:*}/subcommands/${1#*:} ]]; then
+    "$PLUGIN_ENABLED_PATH/${PLUGIN_NAME%%:*}/subcommands/${1#*:}" "$@"
+    implemented=1
+  fi
 
-  # DEPRECATED as of v0.3.14
-  deploy:all)
-      echo "*DEPRECATED* in v0.3.14: deploy:all will be removed in future versions"
-      dokku ps:restartall
-    ;;
-
-  help|'')
-    echo "Usage: dokku [--quiet|--trace|--rm-container|--rm|--force] COMMAND <app> [command-specific-options]"
-    echo ""
-    echo "Options:"
-
-    cat<<EOF | plugn trigger commands help | sort | column -c2 -t -s,
-    help, Print the list of commands
-EOF
-    ;;
-
-  *)
-    implemented=0
+  if [[ $implemented -eq 0 ]];then
     for script in $PLUGIN_ENABLED_PATH/*/commands; do
       set +e; $script "$@" ; exit_code=$? ; set -e
       if [[ "$exit_code" -eq "$DOKKU_NOT_IMPLEMENTED_EXIT" ]]; then
         continue
       fi
-
       implemented=1
       if [[ "$exit_code" -ne "$DOKKU_VALID_EXIT" ]]; then
         exit $exit_code
       fi
     done
+  fi
 
-    if [[ "$implemented" -eq 0 ]]; then
-      dokku_log_warn "\`$*\` is not a dokku command."
-      dokku_log_warn "See \`dokku help\` for a list of available commands."
-      exit 1
+  if [[ "$implemented" -eq 0 ]]; then
+    dokku_log_warn "\`$*\` is not a dokku command."
+    dokku_log_warn "See \`dokku help\` for a list of available commands."
+    exit 1
+  fi
+}
+
+case "$1" in
+  help|'')
+    export LC_ALL=C # so sort will respect non alpha characters
+    ALL_PLUGIN_COMMANDS=$(find -L "$PLUGIN_PATH/enabled" -name commands 2> /dev/null || true)
+
+    # build list of core plugin command files
+    for plugin_command in $ALL_PLUGIN_COMMANDS;do
+      if [[ "$(readlink -f "$plugin_command")" == *core-plugins* ]]; then
+        CORE_PLUGIN_COMMANDS+="$plugin_command "
+      fi
+    done
+    # build list of non-core plugin command files
+    for plugin_command in $ALL_PLUGIN_COMMANDS;do
+      if [[ "$(readlink -f "$plugin_command")" != *core-plugins* ]]; then
+        COMMUNITY_PLUGIN_COMMANDS+="$plugin_command "
+      fi
+    done
+
+    # New lines are blank echos for readability
+    echo "Usage: dokku [--quiet|--trace|--rm-container|--rm|--force] COMMAND <app> [command-specific-options]"
+    echo ""
+    echo "Primary help options, type \"dokku COMMAND:help\" for more details, or dokku help --all to see all commands."
+    echo ""
+    echo "Commands:"
+    echo ""
+
+    if [[ "$2" == "--all" ]] ; then
+      for core_plugin_command in $CORE_PLUGIN_COMMANDS; do
+        $core_plugin_command help
+      done | sort | column -c2 -t -s,
+      echo ""
+      echo "Community plugin commands:"
+      echo ""
+      for community_plugin_command in $COMMUNITY_PLUGIN_COMMANDS; do
+        $community_plugin_command help
+      done | sort | column -c2 -t -s,
+    else
+      for core_plugin_command in $CORE_PLUGIN_COMMANDS; do
+        $core_plugin_command help
+      # When done, sort, sed cuts arugments out of strings and colum make it pretty
+      done | sort | sed -e '/^.*:/d' -e 's/\s[\[\<\-\(].*,/,/' | column -c2 -t -s,
+      if [[ -n "$COMMUNITY_PLUGIN_COMMANDS" ]]; then
+        echo ""
+        echo "Community plugin commands:"
+        echo ""
+        for community_plugin_command in $COMMUNITY_PLUGIN_COMMANDS; do
+          $community_plugin_command help
+        done | sort | column -c2 -t -s,
+      fi
     fi
+    ;;
+
+  *)
+    execute_dokku_cmd "$@"
     ;;
 
 esac

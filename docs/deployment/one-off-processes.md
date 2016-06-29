@@ -1,4 +1,4 @@
-# One-off Processes
+# One-off Processes and Cron
 
 Sometimes you need to either inspect running containers or run a one-off command under an application. In those cases, Dokku makes it easy to either connect to a running container or run a fresh container.
 
@@ -13,6 +13,17 @@ The `run` command can be used to run a one-off process for a specific command. T
 ```shell
 # runs `ls -lah` in the `/app` directory of the application `node-js-app`
 dokku run node-js-app ls -lah
+```
+
+The `run` command can also be used to run a command defined in your Procfile:
+
+```
+console: bundle exec racksh
+```
+
+```shell
+# runs `bundle exec racksh` in the `/app` directory of the application `my-app`
+dokku run my-app console
 ```
 
 If you want to remove the container after a command has started, you can run the following command:
@@ -31,6 +42,15 @@ You may also use the `--rm-container` or `--rm` dokku flags to remove the contai
 dokku --rm-container run node-js-app ls -lah
 dokku --rm run node-js-app ls -lah
 ```
+
+Finally, you may wish to run a container in "detached" mode via the `--detach` dokku flag. Running a process in detached mode will immediately return a `CONTAINER_ID`. It is up to the user to then further manage this container in whatever manner they see fit, as dokku will *not* automatically terminate the container.
+
+```shell
+dokku --detach run node-js-app ls -lah
+# returns the ID of the new container
+```
+
+> Note that you may not use the `--rm-container` or `--rm` flags when running containers in detached mode, and attempting to do so will result in the `--detach` flag being ignored.
 
 ### Using `run` for cron tasks
 
@@ -59,6 +79,8 @@ dokku enter node-js-app web.1
 dokku enter node-js-app --container-id ID
 ```
 
+Additionally, you can run `enter` with no container-type. If only a single container-type is defined in your app, you will be dropped into the only running container. This behavior is not supported when specifying a custom command; as described below.
+
 By default, it runs a `/bin/bash`, but can also be used to run a custom command:
 
 ```shell
@@ -74,7 +96,7 @@ dokku enter node-js-app web python script/background-worker.py
 Your procfile can have the following entry:
 
 ```
-cron: while true; do sleep 10; done
+cron: sleep infinity
 ```
 
 With the `cron` process scaled to `1`:
@@ -97,6 +119,8 @@ For tasks that will properly resume, you **should** use the above method, as run
 
 Regularly scheduled tasks can be a bit of a pain with dokku. The following are general recommendations to follow to help ensure successful task runs.
 
+- Use the dokku user's crontab
+  - If you do not, dokku will attempt to execute with sudo dokku, and your cron run with fail with `sudo: no tty present and no askpass program specified`
 - Add a `MAILTO` environment variable to ship cron emails to yourself.
 - Add a `PATH` environment variable or specify the full path to binaries on the host.
 - Add a `SHELL` environment variable to specify bash when running commands.

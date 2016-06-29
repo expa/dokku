@@ -11,7 +11,11 @@ Of all methods, this is the *most* official method of interacting with your dokk
 To install, simply clone the dokku repository down and add the `dokku` alias pointing at the script:
 
 ```shell
-git clone git@github.com:progrium/dokku.git ~/.dokku
+git clone git@github.com:dokku/dokku.git ~/.dokku
+
+# optional: make sure that the dokku_client.sh version matches your dokku version
+cd ~/.dokku
+git checkout <tag/branch>
 
 # add the following to either your
 # .bashrc, .bash_profile, or .profile file
@@ -32,6 +36,8 @@ alias dokku 'bash $HOME/.dokku/contrib/dokku_client.sh'
 ```
 
 Configure the `DOKKU_HOST` environment variable or run `dokku` from a repository with a git remote named dokku pointed at your dokku host in order to use the script as normal.
+
+You can also configure a `DOKKU_PORT` environment variable if you are running ssh on a non-standard port. This defaults to `22`.
 
 ## (nodejs) dokku-toolbelt
 

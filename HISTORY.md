@@ -1,5 +1,627 @@
 # History
 
+## 0.6.4
+
+Included in this release are a couple of bug fixes for existing features.
+
+Thanks to all the contributors who helped with this release!
+
+### Bug Fixes
+
+- #2275: @sseemayer Prefer file import in certs:add if files given
+- #2279: @michaelshobbs Only attempt to stop a checks-disabled container if it is actually running
+
+### New Features
+
+- #2270: @guillaumewuip Allow apps:destroy when not in a project
+- #2271: @josegonzalez Handle purging the dokku user, group, and logs directory during `apt-get purge`
+
+### Documentation
+
+- #2272: @josegonzalez Add documentation surrounding when the /app/.env file is populated
+
+## 0.6.3
+
+This release is mostly a documentation release.
+
+Thanks to all the contributors who helped with this release!
+
+### Bug Fixes
+
+- #2258: @michaelshobbs Support domains that start with digits per RFC1123
+
+### New Features
+
+- #2260: @josegonzalez Add ability to remove a specific port mapping tuple
+- #2261: @josegonzalez Drop apparmor requirement to support systemd systems
+
+### Documentation
+
+- #2262: @josegonzalez Document that REV is optional in the receive-app trigger
+- #2264: @troy Use Markdown for sponsors page, so it's clickable from GitHub
+- #2266: @michaelshobbs Add documentation surrounding proxy port mapping
+
+## 0.6.2
+
+This release is a minor bugfix for the web setup, and also reverts a previous addition to the persistent storage. Please see the pull requests for more details.
+
+Thanks to all the contributors who helped with this release!
+
+### Bug Fixes
+
+- #2256: @michaelshobbs Revert automatically binding storage mounts in build phase
+- #2259: @andrewsomething Don't run DeleteInstallerThread() until after set_debconf_selection
+
+## 0.6.1
+
+This release is a minor bugfix to fix an issue with ssl support for spdy-enabled nginx servers. Users are encouraged to upgrade if they have an older version of nginx installed.
+
+### Bug Fixes
+
+- #2250: @michaelshobbs Fix missing $ sign in default nginx template
+
+## 0.6.0
+
+The big-six-o. This release is largely comprised of new features that should allow for easier management of dokku. The highlights of this release are:
+
+- The proxy plugin has been enhanced to allow users to map container ports to host ports. In the 0.5.0 release, we changed the semantics of how Dockerfile `EXPOSE` calls work to better follow Docker's lead, which ended up breaking how some applications were deployed to dokku. Please read our documentation surrounding [port management](http://dokku.viewdocs.io/dokku/proxy/) for more details.
+- Zero-downtime deploys can be disabled on a per-app and per-process basis. This can be used to speed up deploys when there are non-web processes being deployed, or when a user wishes to completely avoid any such waiting period. Please see the [checks documentation](http://dokku.viewdocs.io/dokku/checks-examples/) for further information.
+
+Thanks to all the contributors who helped with this release, and a special thanks to @michaelshobbs for ferrying the majority of our new functionality to it's current state!
+
+### Bug Fixes
+
+- #2241: @josegonzalez Set debconf selections from dokku-installer.py
+- #2242: @michaelshobbs Avoid calling dokku binary
+- #2243: @josegonzalez Nginx 1.9.5+ support
+
+### New Features
+
+- #2018: @pascalw Support running Procfile commands using `dokku run`
+- #2050: @josegonzalez Implement repo:gc and repo:purge-cache
+- #2109: @josegonzalez Allow user to modify the repository and tag when deploying an app
+- #2168: @michaelshobbs Allow zero-downtime deploys to be completely disabled
+- #2248: @michaelshobbs Allow users to map container ports to host ports via the proxy plugin
+
+### Documentation
+
+- #2209: @piamancini Added backers and sponsors from OpenCollective
+- #2244: @basgys Add InfluxDB to plugins
+
+## 0.5.8
+
+This release is the last release in the `0.5.x` series, and as such is mainly a bugfix release. Users are highly encouraged to upgrade to this release *before* moving to the upcoming `0.6.x` release, as we will be removing deprecated features at that point.
+
+Thanks to all the contributors who helped with this release!
+
+### Bug Fixes
+
+- #2214: @michaelshobbs Remove git push from client
+- #2220: @josegonzalez Remove DOKKU_PROCFILE before attempting to extract it
+- #2227: @michaelshobbs Pass image tag from release_and_deploy down through extract_procfile
+- #2228: @michaelshobbs Support WORKDIR location for DOKKU_SCALE
+- #2229: @hansmi Fix removal of domains with schema
+- #2234: @michaelshobbs Cleanup container state files when a process type is removed from app
+- #2236: @michaelshobbs Hide unnecessary output from is_image_herokuish_based()
+- #2233: @josegonzalez Lintian cleanup
+
+### New Features
+
+- #2205: @josegonzalez Fix lintian errors in built debian packages
+- #2223: @josegonzalez De-duplicate nginx restarting
+- #2237: @michaelshobbs Reject invalid domains in domains:add
+- #2238: @michaelshobbs Mount storage mounts on build for buildpack deploys
+
+### Documentation
+
+- #2212: @jbothma Warn and instruct users about unsafe publicly-accessible web installer
+- #2222: @michaelshobbs Move nginx upstream blocks to the bottom in docs examples
+
+## 0.5.7
+
+0.5.7 includes quite a few documentation updates, and a few minor changes in how we handle certain edge-cases in day-to-day dokku tasks.
+
+Thanks to all the contributors who helped with this release!
+
+### Bug Fixes
+
+- #2157: @michaelshobbs test detached container is running
+- #2170: @jvanbaarsen Do not fail domains:add when adding a duplicated domain
+- #2171: @tobru Continue to restore applications during boot when any given application does not start
+- #2173: @michaelshobbs Add test for ps:restore with undeployed app
+- #2202: @michaelshobbs Attempt to bypass inconsistencies in nginx start behavior
+
+### New Features
+
+- #2155: @josegonzalez Add the ability to run containers in detached mode
+- #2163: @michaelshobbs Support deployment of arbitrary docker images not built by dokku build
+- #2175: @michaelshobbs Show available types and ids on dokku enter error
+- #2193: @josegonzalez Upgrade herokuish version built via deb packaging
+- #2203: Allow specifying NO_INSTALL_RECOMMENDS via DOKKU_NO_INSTALL_RECOMMENDS in bootstrapped installs
+
+### Documentation
+
+- #2164: @iloveitaly Adding longtimeout and hostname to dokku plugin list
+- #2167: @iloveitaly Adding link to rollbar plugin
+- #2182: @cu12 Add link to FakeSNS plugin
+- #2183: @Epigene Update nginx docs to mirror generated nginx.conf from core
+- #2187: @pltchuong Add missing trigger to plugin triggers documentation
+- #2190: @cu12 Add ElasticMQ plugin to documentation
+- #2191: @josegonzalez Clarify upgrade docs for bootstrap.sh installations
+- #2192: @josegonzalez Clarify that the checks are only run against the web process
+- #2194: @josegonzalez Clarify the role of process types for buildpack deployment
+- #2195: @josegonzalez Clarify when certain plugin triggers are invoked
+
+## 0.5.6
+
+Release 0.5.6 is mostly a documentation release. Please note, however, that we now inject application environment variables into sigil-generated nginx configurations. You can use this to further improve your generated nginx configuration files.
+
+Thanks to all the contributors who helped with this release!
+
+### Bug Fixes
+
+- #2120: @u2mejc Add apex help_content for certs,nginx,storage,tar plugins
+- #2122: @michaelshobbs Add 10.0.0.2 so *.dokku.me works
+- #2145: @michaelshobbs Fix dockerfile-procfile test
+
+### New Features
+
+- #2150: @michaelshobbs export app config vars into sigil environment for use in nginx templates
+
+### Documentation
+
+- #2099: @ojosdegris Added clarification on configuration via separate files
+- #2107: @simenbrekken Add CI deployment recipe
+- #2112: @josegonzalez Alphabetize triggers
+- #2114: @josegonzalez Add table of contents to sidebar when there is a table of contents
+- #2115: @josegonzalez Document potential dockerfile/nginx.conf.sigil issues
+- #2116: @josegonzalez Warn users when there is a low memory condition on installation
+- #2127: @crisward Added dokku require plugin
+- #2129: @christiangenco Condense upgrading instructions
+- #2136: @josegonzalez Use `sleep infinity` for enter cron task
+- #2142: @Aluxian Add dokku-nginx-cache to the list of plugins
+
+## 0.5.5
+
+Release 0.5.5 is mostly a documentation release, further clarifying how our default proxy implementation (nginx) interacts with Dockerfiles. Note that we also updated how ssl certificates interact with application domains, so please check out our domains and ssl documentation.
+
+We've also added a small section to the [dokku homepage](http://dokku.viewdocs.io/dokku/) that lists the current core team. Feel free to look at their beautiful faces and imagine yourself contributing to Dokku and joining our core team. There are [quite a few ways to contribute](https://github.com/dokku/dokku/blob/master/CONTRIBUTING.md) - even without code/documentation - so feel more than free to jump on the bandwagon!
+
+Finally, we've started an [Official Dokku Blog](https://dokku.github.io/), where we will post about dokku internals, roadmaps, potential use-cases, etc. An rss feed is available [here](https://dokku.github.io/feed.xml).
+
+Thanks to all the contributors who helped with this release!
+
+### Bug Fixes
+
+- #2094: @josegonzalez Create storage directories on install. Closes #2091
+- #2102: @josegonzalez Only strip .git directory from end of url
+
+### New Features
+
+- #2088: @josegonzalez Upgrade herokuish package
+- #2089: @michaelshobbs Update how ssl and multiple domains interact
+
+### Documentation
+
+- #2076: @josegonzalez Add a note to dockerfile deploys concerning ports being exposed as http
+- #2080: @michaelshobbs Clarify the need for contents of dockerfile when debugging
+- #2082: @michaelshobbs Add use case example for ssl redirect
+- #2083: @louisbl Clarify 0.5.0 migration guide about `EXPOSE`
+- #2084: @louisbl Clarify where to put nginx custom template without `WORKDIR`
+- #2093: @fwolfst Fix path in storage example
+- #2098: @josegonzalez Add a blog link to the header area
+- #2100: @kane-c Fix docs navigation link to domain configuration
+- #2104: @crisward Added new clone plugin
+- #2105: @josegonzalez Add a note about how disabling the proxy affects the host port an application is deployed to
+
+## 0.5.4
+
+This release continues on our tradition of making bugfixes in patch releases. Also note that we now release dokku with `sshcommand` version `0.4.0`, which should increase usability of that package quite a bit.
+
+Thanks to all the contributors who helped with this release!
+
+### Bug Fixes
+
+- #2055: @tobru Move nginx include to server section
+- #2060: @michaelshobbs Filter restart policies from exec-app-json containers
+- #2061: @znz Fix ignored settings in the CHECKS file
+- #2065: @michaelshobbs Fix pre/post deploy support for dockerfile apps
+
+### New Features
+
+- #2052: @josegonzalez Use upstream releases when creating deb packages. Closes #2048
+- #2068: @josegonzalez Use latest sshcommand when installing via debian
+- #2070: @josegonzalez Upgrade sshcommand to 0.4.0
+
+### Documentation
+
+- #2049: @mmlkrx Fix typo in deployment-tasks.md
+- #2051: @plieningerweb Clarify installation instructions in docs
+- #2058: @michaelshobbs Remove references to global TLS certs
+- #2072: @michaelshobbs Note that we only support one EXPOSE port per line in dockerfiles
+
+## 0.5.3
+
+This release sorts out a few minor bugs introduced in the 0.5.0 release.
+
+Thanks to all the contributors who helped with this release!
+
+### Bug Fixes
+
+- #2030: @josegonzalez Fix setting of APPS in checks command when $1 is left unspecified
+- #2035: @stesie Fix ps_restart to not exit early
+- #2042: @michaelshobbs Ensure CHECKS file has trailing newline
+- #2046: @michaelshobbs Strip inline comments and trailing whitespace from CHECKS and Procfile
+- #2047: @michaelshobbs Remove deprecated mktemp args and name vars more clearly
+
+### Documentation
+
+- #2032: @josegonzalez Fix upstream positioning in docs. Closes #2031
+- #2039: @christiangenco Clarify upgrading documentation
+- #2043: @michaelshobbs Clarify dockerfile port exposure documentation
+- #2045: @u2mejc Reword dockerfiles docs to clarify EXPOSE handling in 0.5.x
+
+## 0.5.2
+
+This is a packaging fix release.
+
+### Bug Fixes
+
+- #2027: @michaelshobbs Add sigil to debian control file
+
+## 0.5.1
+
+That was quick! This is a bugfix release to fix issues in the packaging and release phases of dokku.
+
+### Bug Fixes
+
+- #2023: @josegonzalez Fix sigil packaging
+- #2024: @josegonzalez Delete bad symlinks without confirmation
+
+## 0.5.0
+
+This is our largest, most feature-packed release in the history of the dokku project. Lots of delicious things, including:
+
+- Support for docker 1.10/1.11. You *must* have docker 1.9.1+ to install dokku.
+- Revamped documentation website
+- [Deployment Tasks](http://dokku.viewdocs.io/dokku/deployment/deployment-tasks/)
+- Heroku-style management of [dockerfile processes](http://dokku.viewdocs.io/dokku/deployment/dockerfiles/#procfiles-and-multiple-processes)
+- Official [persistent storage plugin](http://dokku.viewdocs.io/dokku/dokku-storage/)
+
+We'd also love it if you welcomed a few new core developers:
+
+- @MorrisJobke: Maintainer of our new arch linux support
+- @u2mejc: Contributed the help refactor and persistent storage plugins
+
+Thanks to all the contributors who helped with this release!
+
+## Refactor
+
+- #1892: @michaelshobbs Refactor nginx proxy plugin to add usage flexibility
+- #1925: @josegonzalez Simplify bootstrap.sh installation method
+- #1953: @michaelshobbs Refactor commands into subcommands and add support for --app argument
+- #1983: @u2mejc Collapse help into expandable command topics
+- #1936: @michaelshobbs Cleanup shellcheck SC2086
+
+### Bug Fixes
+
+- #1934: @michaelshobbs Fix get_running_image_tag() with docker 1.10.x
+- #1935: @michaelshobbs Remove unnecessary nginx test
+- #1941: @cu12 Fix issue with plugins having plugins command
+- #1980: @cu12 Fix issue when Dockerfile present but BUILDPACK_URL is set
+- #1991: @MorrisJobke Only chown of existing files
+- #1993: @istarkov Fix bash incorrect test command
+- #2006: @baob Fix too many redirects
+- #2012: @michaelshobbs minor bug fixes around app.json and docker-options
+
+### New Features
+
+- #1830: @u2mejc Add core storage plugin to manage docker bind mounts
+- #1836: @michaelshobbs Support scripts.dokku. in app.json
+- #1918: @MorrisJobke Adds support for ArchLinux as host OS
+- #1924: @pmclanahan Use Procfile for process types in Dockerfile apps
+- #1939: @pmclanahan Add dokku git remote when specifying app name in bash client
+- #1958: @u2mejc Enable debug output for dokku global exports in trace
+- #1959: @josegonzalez Allow customizing ssh port for the default client
+- #1981: @josegonzalez Only remove containers with dokku label
+- #1987: @josegonzalez Do not restart stopped processes on config:set/unset
+
+### Documentation
+
+- #1687: @u2mejc Deprecate and remove dokku backup plugin, replace with documentation.
+- #1931: @josegonzalez Standardize on "relative" doc links
+- #1938: @npazo Add information about Slack channel
+- #1947: @basgys Add etcd to the list of plugins
+- #1951: @znz Fix typos
+- #1960: @josegonzalez Clarify which commands should be run where. Closes #1890
+- #1963: @josegonzalez Add floating sidebar on documentation linking to released versions
+- #1965: @trevorturk Clarify checks documentation
+- #1974: @simenbrekken Update link in Azure installation instructions. Fixes #1973
+- #1979: @josegonzalez Add specific documentation around user management. Closes #1978
+- #1985: @MikeSchroll Make history readable in github
+- #1990: @ligthyear Highlight features that are yet to come
+- #1992: @Sureiya Improved documentation for using official dokku_client.sh
+- #2000: @iamale Add dokku-monorepo to the plugin list in docs
+- #2002: @michaelshobbs clarify deployment tasks are supported in both buildpack and dockerfile apps
+- #2003: @michaelshobbs Add more useful post-deploy task and make blockquote
+- #2004: @josegonzalez Document 0.5.x container removal strategy. Closes #1982
+- #2007: @josegonzalez Document when configuration variables are available. Closes #1860
+- #2009: @samholmes1337 Clarify purpose and potential penalties of primary vhost
+- #2011: @josegonzalez Updated installation docs
+- #2013: @michaelshobbs Make help desc local consistent
+
+## 0.4.14
+
+Hah you got us. We have to ship another 0.4.x release to fix issues with
+running commands via `dokku run`. For quite a few releases, we've been
+ignoring the `--rm` flag, meaning containers were lying around if you were
+using `dokku run` in cron. This release fixes it, and is important enough
+to warrant a 0.4.x release.
+
+Thanks to all the contributors who helped with this release!
+
+### Bug Fixes
+
+- #1888: @u2mejc Remove broken symlinks when using copyfiles
+- #1887: @u2mejc Fix <command>:help hangs for certs, enter, tags, tar
+- #1901: @josegonzalez Add shebang to config/functions so editors see it as a shell script
+- #1907: @michaelshobbs Fix dokku run --rm regression
+- #1911: @2mia Add support for github url patterns when installing plugins
+- #1912: @mattberther Pass -i -t to docker exec only if tty present
+- #1923: @michaelshobbs Fix typo in generate_scale_file()
+
+### Documentation
+
+- #1882: @josegonzalez Add a note to warn users to peg to specific versions of buildpacks
+- #1883: @michaelshobbs Show plugn version when listing plugins
+- #1900: @josegonzalez Upgrade our CoC to 1.4 of the Contributor Covenant
+- #1913: @michaelshobbs document appropriate crontab usage
+- #1921: @josegonzalez Create ISSUE_TEMPLATE.md
+- #1922: @josegonzalez Link to our new ISSUE_TEMPLATE.md
+
+## 0.4.13
+
+We lied. *This* is the final 0.4.x release. This specific release fixes support for bash `4.2`, which may be the only bash version available for certain testing environments.
+
+Thanks to all the contributors who helped with this release!
+
+### Bug Fixes
+
+- #1871: @michaelshobbs Support bash 4.2 so we don't have to modify all plugin test envs
+- #1872: @kenips Update log to better reflect what's going on with CHECKS
+
+## 0.4.12
+
+This is a small bugfix release, which will be the final release before the 0.5.x line. You can follow along on bugs/features we hope to cleanup for 0.5.x [here](https://github.com/dokku/dokku/milestones/v0.5.0).
+
+Thanks to all the contributors who helped with this release!
+
+### Bug Fixes
+
+- #1868: @alessio Prevent dokku to hang on events:help
+- #1870: @u2mejc Remove arg check from docker-options/functions, global var cleanup
+
+## 0.4.11
+
+Thanks to all the contributors who helped with this release!
+
+### Bug Fixes
+
+- #1840: @alessio Append trailing slash '/' to $PLUGIN_DIR
+- #1841: @michaelshobbs Don't build nginx config if the app has not been deployed
+- #1844: @michaelshobbs Handle multiple old containers and don't attempt to rename a dead container
+- #1845: @michaelshobbs Update nodejs in test apps
+- #1849: @floriangosse Fix logrotate file for debian system
+- #1862: @michaelshobbs Install bash 4.3.x on circleci
+- #1863: @znz Fix a typo in IPV6 detection
+
+### New Features
+
+- #1842: @michaelshobbs skip cleanup in ci to speed up tests
+- #1848: @u2mejc Move docker-options functions to functions file, rework phase_file_path
+- #1855: @jvanbaarsen Add skip_keyfile option for deb package
+- #1864: @znz Remove nullglob from ps commands
+
+### Documentation
+
+- #1838: @Epigene Fixed typo in installation documentation
+- #1843: @sseemayer Move let's encrypt plugin to official plugins
+- #1854: @fedosov Update year in footer (2013-2016)
+- #1856: @madflow Fixed dead documentation link
+- #1859: @dhinus Fix command for debconf-set-selections
+
+## 0.4.10
+
+This release is mostly a bugfix release, though we have a few important changes:
+
+- `dokku plugin:update` can now be used to update a specific plugin. Previously, this could potentially result in an error a user would have to manually resolve.
+- We have started labeling all dokku-managed containers. In a future minor release, triggering a `dokku cleanup` will remove *only* exited containers that are managed by dokku. This change allows users to start containers outside of dokku and be assured that dokku would not inadvertently remove them.
+
+Thanks to all the contributors who helped with this release!
+
+### Bug Fixes
+
+- #1818: @josegonzalez Fix pre-receive git-hook in apps:rename
+- #1819: @andrewsomething Write out /home/dokku/HOSTNAME as specified by the web installer.
+- #1823: @josegonzalez Fix output formatting of dokku apps
+- #1827: @michaelshobbs Use docker 1.9.0 on circleci
+- #1834: @jvanbaarsen Make sure we ignore hidden files in the SSL cert check
+- #1835: @josegonzalez Add support to herokuish for more versions of docker-engine
+- #1837: @michaelshobbs Add back some deploy tests that test dokku functionality
+
+### New Features
+
+- #1826: @michaelshobbs Implement plugn update
+- #1828: @michaelshobbs Label all dokku-managed containers
+- #1829: @michaelshobbs Implement dokku report command
+
+### Documentation
+
+- #1822: --no-restart option after config:set not before
+
+## 0.4.9
+
+This release is significant for two reasons:
+
+- A bugfix for git submodule support that was broken in 0.4.7
+- Improved and tested support for modern variants of Ubuntu/Debian. This should also improve support for docker-based deployments of dokku, as well as potential support for the upcoming Ubuntu 16.04 release.
+
+Thanks to all the contributors who helped with this release!
+
+### Bug Fixes
+
+- #1810: @josegonzalez Fix debian packaging for usage inside of docker containers
+- #1814: @blackxored Add support for new method of extracting container IP
+- #1807: @josegonzalez Allow updating submodules at any revision
+
+### New Features
+
+- #1812: @josegonzalez Fully-tested debian packaging for modern Ubuntu/Debian distributions
+
+### Documentation
+
+- #1811: @josegonzalez Add dokku haproxy to plugins
+
+## 0.4.8
+
+If upgrading to 0.4.8, please note that we have tightened the application naming schema, per docker requirements. Upgrade your dokku installation to 0.4.7 first to take advantage of the `dokku apps:rename` command if you are having issues with the new requirement.
+
+### Bug Fixes
+
+- #1804: @josegonzalez Fix deprecated version constraint usage in debian control file
+- #1798: @michaelshobbs Ensure app name begins with lowercase alphanumeric character
+- #1808: @josegonzalez Fix path to dokku-installer
+
+### New Features
+
+- #1801: @josegonzalez Allow setting DOKKU_LIB_ROOT env var to modify the lib path on install
+- #1803: @michaelshobbs update plugn download url and version
+
+### Documentation
+
+- #1809: @josegonzalez Remove non-zero downtime version of letsencrypt plugin
+
+## 0.4.7
+
+A few notable new features:
+
+- The new `dokku apps:rename` command. It does not update linked containers, but is useful in many other cases.
+- Updated git clone methodology to be more performant for large repositories.
+- Moved the dokku-installer from Ruby to Python, allowing us to drop Ruby as a dependency. Python comes with the linux standard base, and should therefore be accessible on more systems.
+
+### Bug Fixes
+
+- #1776: @t-8ch Fix docker version constraints on jessie systems
+- #1777: @michaelshobbs Format test labels
+- #1782: @michaelshobbs make docker cp work on circleci
+- #1788: @michaelshobbs Updates for moving of dokku sshcommand and plugn repos
+- #1791: @michaelshobbs Don't run app deploy tests and spread out unit tests to 4 containers
+- #1793: @michaelshobbs Filter out Procfile comments
+
+### New Features
+
+- #1670: @zachfeldman Add apps:rename
+- #1771: @jvanbaarsen Make plugin hooks send out more information
+- #1778: @mmerickel Optimize git clone for large repositories
+- #1781: @jvanbaarsen Add post config update hook
+- #1789: @lvillani Make it possible to skip a deploy
+- #1790: @michaelshobbs Use pgup/pgdown for history shortcut in dev env
+- #1794: @josegonzalez Replace dokku-installer.rb with dokku-installer.py
+- #1797: @michaelshobbs Ensure we run plugin commands as root
+- #1799: @josegonzalez Add support for tutum-agent as docker alternative
+- #1800: @josegonzalez Respect DOKKU_ROOT in debian/postint
+
+### Documentation
+
+- #1779: @sseemayer Add link to new zero-downtime Let's Encrypt Plugin to docs
+- #1780: @jvanbaarsen Add documentation for the new domain plugin hooks
+- #1784: @duboff Tiny fix in SSL documentation
+
+## 0.4.6
+
+This is mostly a documentation change. A few notable changes:
+
+- Rebooting dokku servers should properly handle not starting stopped services.
+- Better support for newer versions of Debian/Ubuntu.
+- Moved the dokku project to the dokku github organization.
+
+Thanks to all the contributors who helped with this release!
+
+### Bug Fixes
+
+- #1717: @josegonzalez Avoid using the PPA for ubuntu versions 15.10 and higher
+- #1727: @louisbl Enable dokku-redeploy systemd service.
+- #1732: @michaelshobbs do not chown file that doesn't exist
+- #1745: @beverku Change herokuish to recommended package
+- #1767: @jvanbaarsen Remove shebang from config/functions
+- #1775: @Flink Match complete container name in named-containers plugin
+
+### New Features
+
+- #1718: @josegonzalez Add post-create hook
+- #1735: @michaelshobbs use ps:restore on instance boot
+
+### Documentation
+
+- #1720: @josegonzalez Add memory usage output as desired data for reporting issues
+- #1723: @josegonzalez Add herokuish version to desired debugging info
+- #1739: @michaelshobbs clarify location of nginx.conf.template in app repo
+- #1747: @josegonzalez Add Lets Encrypt plugin
+- #1748: @byrnedo Added unofficial Nats plugin to plugins.md
+- #1750: @jlachowski New graphite & statsd plugin with grafana frontend added
+- #1751: @josegonzalez Use flat-square style on image badges
+- #1752: @byrnedo Moved dokku-nats into official plugins section
+- #1753: @hhff Add .ca-bundle information to SSL docs
+- #1754: @josegonzalez Update all links to dokku repo
+- #1757: @josegonzalez Add DigitalOcean as a sponsor
+- #1761: @josegonzalez Fix link to docker-options documentation
+
+## 0.4.5
+
+This release is mostly a bugfix release. Two notable changes:
+
+- It is now possible to build complex authentication layers around dokku using the new user auth plugin trigger introduced in #1671.
+- We have a Code of Conduct in our repository. Please refer to this document if you have any questiosn regarding what is acceptable in the Dokku community.
+
+Thanks to all the contributors who helped with this release!
+
+### Bug Fixes
+
+- #1666: @michaelshobbs Revert dokku group changes and add dokku user to adm group
+- #1667: @u2mejc Fix dokku certs:add file input bug
+- #1682: @michaelshobbs Aet nullglob when looking for PORT files
+- #1684: @u2mejc Cause certs:remove to return non zero on error
+- #1690: @u2mejc Fix "App tls has not been deployed" error
+- #1696: @michaelshobbs chown plugins paths to dokku:dokku
+- #1698: @pmvieira Ensure curl is installed inside of source-based installations
+- #1700: @michaelshobbs copy nginx.ssl.template from app container
+- #1701: @michaelshobbs Don't call nginx_build_config twice
+- #1702: @josegonzalez Remove extra whitespace in command output
+- #1703: @josegonzalez Fix casing on help output
+- #1706: @michaelshobbs Respect DOKKU_RM_CONTAINER in run phase
+- #1707: @Flink Do a perfect match on the container name in named-containers plugin
+- #1708: @michaelshobbs ensure permissions are locked down on tls folder and contents
+- #1709: @michaelshobbs Fix Must specify DOMAIN error over ssh
+- #1712: @michaelshobbs filter incompatible docker option when building dockerfile vs herokuish apps
+- #1715: @michaelshobbs use patched static buildpack in test
+
+### New Features
+
+- #1665: @callahad Replace curl with wget
+- #1671: @josegonzalez User Auth plugin trigger
+- #1683: @u2mejc Add bats test for certs plugin
+- #1699: @michaelshobbs print where we find DOKKU_SCALE when we find it
+
+### Documentation
+
+- #1642: @cjblomqvist Add new plugin adding app name to env
+- #1674: @josegonzalez Expand buildpack deployment documentation
+- #1675: @josegonzalez Create CODE_OF_CONDUCT.md
+- #1677: @ignlg Added dokku-builders-plugin to plugins page
+- #1681: @josegonzalez Fix email in code of conduct
+- #1694: @MarcDiethelm Improve docker-options doc
+- #1713: @mbriskar Wkhtmltopdf plugin
+
 ## 0.4.4
 
 This release adds a few interesting changes:
@@ -158,9 +780,9 @@ One new feature is colorized logging output, which should make it easier to debu
 
 This is our first minor release in almost a year. Many new features and removals have occurred, so here is a neat summary:
 
-- Plugins are now triggered via `plugn`. Notably, you'll need add a `plugin.toml` to describe the plugin as well as use `plugn trigger` instead of `pluginhook` to trigger plugin callbacks. Please see the [plugin creation documentation](http://progrium.viewdocs.io/dokku/development/plugin-creation/) for more details.
-- A few new official plugins have been added to the core, including [image tagging](http://progrium.viewdocs.io/dokku/application-deployment/), [certificate management](http://progrium.viewdocs.io/dokku/deployment/ssl-configuration/), a tar-based deploy solution, and much more. Check out the *New Features* section for more details.
-- We've removed a few deprecated plugin callbacks. Please see the [plugin triggers documentation](http://progrium.viewdocs.io/dokku/development/plugin-triggers/) to see what is available.
+- Plugins are now triggered via `plugn`. Notably, you'll need add a `plugin.toml` to describe the plugin as well as use `plugn trigger` instead of `pluginhook` to trigger plugin callbacks. Please see the [plugin creation documentation](http://dokku.viewdocs.io/dokku/development/plugin-creation/) for more details.
+- A few new official plugins have been added to the core, including [image tagging](http://dokku.viewdocs.io/dokku/application-deployment/), [certificate management](http://dokku.viewdocs.io/dokku/deployment/ssl-configuration/), a tar-based deploy solution, and much more. Check out the *New Features* section for more details.
+- We've removed a few deprecated plugin callbacks. Please see the [plugin triggers documentation](http://dokku.viewdocs.io/dokku/development/plugin-triggers/) to see what is available.
 - [Official datastorage plugins](https://github.com/dokku) have been created for the most commonly used datastores. If you previously used/maintained a community contributed plugin, please check these out. We'll be adding more official plugins as time goes on.
 
 Thanks to the *many* contributors for making this release our best release so far, and special thanks to both @michaelshobbs and @Flink for pushing along the `0.4.0` release!
@@ -269,7 +891,7 @@ This release is a bugfix release covering dokku packaging.
 
 ## 0.3.23
 
-This release is a bugfix release mostly covering installation and nginx issues. As well, we launched a nicer documentation site [here](http://progrium.viewdocs.io/dokku/). Thanks to all of our contributors for making this a great release!
+This release is a bugfix release mostly covering installation and nginx issues. As well, we launched a nicer documentation site [here](http://dokku.viewdocs.io/dokku/). Thanks to all of our contributors for making this a great release!
 
 ### Bug Fixes
 

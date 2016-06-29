@@ -4,6 +4,7 @@ Dokku normally defaults to using [heroku buildpacks](https://devcenter.heroku.co
 
 - Use `dokku config:set` to set the `BUILDPACK_URL` environment variable.
 - Add `BUILDPACK_URL` to a committed `.env` file in the root of your repository.
+  - See the [environment variable documentation](/dokku/configuration-management/) for more details.
 - Create a `.buildpacks` file in the root of your repository.
 
 ## Specifying a custom buildpack
@@ -16,6 +17,9 @@ To use a specific buildpack, you can run the following dokku command:
 # replace APP with the name of your application
 # replace REPOSITORY_URL with your buildpack's url
 dokku config:set APP BUILDPACK_URL=REPOSITORY_URL
+
+# example: using a specific ruby buildpack version
+dokku config:set APP BUILDPACK_URL=https://github.com/heroku/heroku-buildpack-ruby.git#v142
 ```
 
 Please check the documentation for your particular buildpack as you may need to include configuration files (such as a Procfile) in your project root.
@@ -25,9 +29,11 @@ Please check the documentation for your particular buildpack as you may need to 
 You can only set a single buildpack using the `BUILDPACK_URL`, though there may be times when you wish to use multiple buildpacks. To do so, simply create a `.buildpacks` file in the base of your repository. This file should list all the buildpacks, one-per-line. For instance, if you wish to use both the `nodejs` and `ruby` buildpacks, your `.buildpacks` file should contain the following:
 
 ```shell
-https://github.com/heroku/heroku-buildpack-nodejs.git
-https://github.com/heroku/heroku-buildpack-ruby.git
+https://github.com/heroku/heroku-buildpack-nodejs.git#v87
+https://github.com/heroku/heroku-buildpack-ruby.git#v142
 ```
+
+> Always remember to pin your buildpack versions when using the multi-buildpacks method, or you may find deploys changing your deployed environment.
 
 You may also choose to set just a single buildpack in this file, though that is up to you.
 
@@ -51,6 +57,31 @@ You may also wish to use a **specific** version of a buildpack, which is also si
 dokku config:set APP BUILDPACK_URL=https://github.com/heroku/heroku-buildpack-nodejs#v87
 ```
 
+## Specifying commands via Procfile
+
+While many buildpacks have a default command that is run when a detected repository is pushed, it is possible to override this command via a Procfile. A Procfile can also be used to specify multiple commands, each of which is subject to process scaling. See the [process scaling documentation](/dokku/process-management/) for more details around scaling individual processes.
+
+A Procfile is a file named `Procfile`. It should be named `Procfile` exactly, and not anything else. For example, `Procfile.txt` is not valid. The file should be a simple text file.
+
+The file must be placed in the root directory of your application. It will not function if placed in a subdirectory.
+
+If the file exists, it should not be empty, as doing so may result in a failed deploy.
+
+The syntax for declaring a `Procfile` is as follows. Note that the format is one process type per line, with no duplicate process types.
+
+```
+<process type>: <command>
+```
+
+If, for example, you have multiple queue workers and wish to scale them separately, the following would be a valid way to work around the requirement of not duplicating process types:
+
+```
+worker:           env QUEUE=* bundle exec rake resque:work
+importantworker:  env QUEUE=important bundle exec rake resque:work
+```
+
+The `web` process type holds some significance in that it is the only process type that is automatically scaled to `1` on the initial application deploy. See the [process scaling documentation](/dokku/process-management/) for more details around scaling individual processes.
+
 ## Clearing buildpack cache
 
 Building containers with buildpacks currently results in a persistent `cache` directory between deploys. If you need to clear this cache directory for any reason, you may do so by running the following shell command:
@@ -60,7 +91,7 @@ Building containers with buildpacks currently results in a persistent `cache` di
 sudo rm -rf /home/dokku/APP/cache/*
 ```
 
-### Curl Build Timeouts
+## Curl Build Timeouts
 
 Certain buildpacks may time out in retrieving dependencies via curl. This can happen when your network connection is poor or if there is significant network congestion. You may see a message similar to `gzip: stdin: unexpected end of file` after a curl command.
 

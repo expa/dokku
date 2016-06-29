@@ -8,7 +8,9 @@ PLUGIN_AVAILABLE_PATH=${PLUGIN_AVAILABLE_PATH:="$PLUGIN_PATH/available"}
 PLUGIN_ENABLED_PATH=${PLUGIN_ENABLED_PATH:="$PLUGIN_PATH/enabled"}
 PLUGIN_CORE_PATH=${PLUGIN_CORE_PATH:="$DOKKU_LIB_ROOT/core-plugins"}
 PLUGIN_CORE_AVAILABLE_PATH=${PLUGIN_CORE_AVAILABLE_PATH:="$PLUGIN_CORE_PATH/available"}
-TEST_APP=my-cool-guy-test-app
+CUSTOM_TEMPLATE_SSL_DOMAIN=customssltemplate.dokku.me
+UUID=$(tr -dc 'a-z0-9' < /dev/urandom | fold -w 32 | head -n 1)
+TEST_APP="rdmtestapp-${UUID}"
 
 # test functions
 flunk() {
@@ -21,6 +23,7 @@ flunk() {
 
 # ShellCheck doesn't know about $status from Bats
 # shellcheck disable=SC2154
+# shellcheck disable=SC2120
 assert_success() {
   if [[ "$status" -ne 0 ]]; then
     flunk "command failed with exit status $status"
@@ -55,6 +58,17 @@ assert_output() {
     expected="$1"
   fi
   assert_equal "$expected" "$output"
+}
+
+# ShellCheck doesn't know about $output from Bats
+# shellcheck disable=SC2154
+assert_output_contains() {
+  local input="$output"; local expected="$1"; local count="${2:-1}"; local found=0
+  until [ "${input/$expected/}" = "$input" ]; do
+    input="${input/$expected/}"
+    let found+=1
+  done
+  assert_equal "$count" "$found"
 }
 
 # ShellCheck doesn't know about $lines from Bats
@@ -99,31 +113,87 @@ assert_exit_status() {
 
 # dokku functions
 create_app() {
-  dokku apps:create $TEST_APP
+  local APP="$1"; local TEST_APP=${APP:=$TEST_APP}
+  dokku apps:create "$TEST_APP"
 }
 
 destroy_app() {
   local RC="$1"; local RC=${RC:=0}
-  local TEST_APP="$2"; local TEST_APP=${TEST_APP:=my-cool-guy-test-app}
-  echo $TEST_APP | dokku apps:destroy $TEST_APP
-  return $RC
+  local APP="$2"; local TEST_APP=${APP:=$TEST_APP}
+  dokku --force apps:destroy "$TEST_APP"
+  return "$RC"
 }
 
 add_domain() {
-  dokku domains:add $TEST_APP $1
+  dokku domains:add "$TEST_APP" "$1"
+}
+
+# shellcheck disable=SC2119
+check_urls() {
+  local PATTERN="$1"
+  run bash -c "dokku --quiet urls $TEST_APP | egrep \"${1}\""
+  echo "output: $output"
+  echo "status: $status"
+  assert_success
+}
+
+assert_http_success() {
+  local url=$1
+  run curl -kSso /dev/null -w "%{http_code}" "${url}"
+  echo "output: $output"
+  echo "status: $status"
+  assert_output "200"
+}
+
+assert_ssl_domain() {
+  local domain=$1
+  assert_app_domain "${domain}"
+  assert_http_redirect "http://${domain}" "https://${domain}:443/"
+  assert_http_success "https://${domain}"
+}
+
+assert_nonssl_domain() {
+  local domain=$1
+  assert_app_domain "${domain}"
+  assert_http_success "http://${domain}"
+}
+
+assert_app_domain() {
+  local domain=$1
+  run /bin/bash -c "dokku domains $TEST_APP | grep -xF ${domain}"
+  echo "output: $output"
+  echo "status: $status"
+  assert_output "${domain}"
+}
+
+assert_http_redirect() {
+  local from=$1
+  local to=$2
+  run curl -kSso /dev/null -w "%{redirect_url}" "${from}"
+  echo "output: $output"
+  echo "status: $status"
+  assert_output "${to}"
 }
 
 deploy_app() {
-  APP_TYPE="$1"; APP_TYPE=${APP_TYPE:="nodejs-express"}
-  GIT_REMOTE="$2"; GIT_REMOTE=${GIT_REMOTE:="dokku@dokku.me:$TEST_APP"}
-  TMP=$(mktemp -d -t "dokku.me.XXXXX")
-  rmdir $TMP && cp -r ./tests/apps/$APP_TYPE $TMP
-  cd $TMP || exit 1
+  local APP_TYPE="$1"; local APP_TYPE=${APP_TYPE:="nodejs-express"}
+  local GIT_REMOTE="$2"; local GIT_REMOTE=${GIT_REMOTE:="dokku@dokku.me:$TEST_APP"}
+  local CUSTOM_TEMPLATE="$3"; local TMP=$(mktemp -d "/tmp/dokku.me.XXXXX")
+  local CUSTOM_PATH="$4"
+
+  rmdir "$TMP" && cp -r "./tests/apps/$APP_TYPE" "$TMP"
+
+  # shellcheck disable=SC2086
+  [[ -n "$CUSTOM_TEMPLATE" ]] && $CUSTOM_TEMPLATE $TEST_APP $TMP/$CUSTOM_PATH
+
+  pushd "$TMP" &> /dev/null || exit 1
+  trap 'popd &> /dev/null || true; rm -rf "$TMP"' RETURN INT TERM
+
   git init
   git config user.email "robot@example.com"
   git config user.name "Test Robot"
   echo "setting up remote: $GIT_REMOTE"
-  git remote add target $GIT_REMOTE
+  git remote add target "$GIT_REMOTE"
 
   [[ -f gitignore ]] && mv gitignore .gitignore
   git add .
@@ -132,9 +202,9 @@ deploy_app() {
 }
 
 setup_client_repo() {
-  TMP=$(mktemp -d -t "dokku.me.XXXXX")
-  rmdir $TMP && cp -r ./tests/apps/nodejs-express $TMP
-  cd $TMP || exit 1
+  local TMP=$(mktemp -d "/tmp/dokku.me.XXXXX")
+  rmdir "$TMP" && cp -r ./tests/apps/nodejs-express "$TMP"
+  cd "$TMP" || exit 1
   git init
   git config user.email "robot@example.com"
   git config user.name "Test Robot"
@@ -145,93 +215,135 @@ setup_client_repo() {
 }
 
 setup_test_tls() {
-  TLS="/home/dokku/$TEST_APP/tls"
-  mkdir -p $TLS
-  tar xf $BATS_TEST_DIRNAME/server_ssl.tar -C $TLS
-  sudo chown -R dokku:dokku $TLS
-}
+  local TLS_TYPE="$1"; local TLS="/home/dokku/$TEST_APP/tls"
+  mkdir -p "$TLS"
 
-setup_test_tls_with_sans() {
-  TLS="/home/dokku/$TEST_APP/tls"
-  mkdir -p $TLS
-  tar xf $BATS_TEST_DIRNAME/server_ssl_sans.tar -C $TLS
-  sudo chown -R dokku:dokku $TLS
-}
-
-setup_test_tls_wildcard() {
-  TLS="/home/dokku/tls"
-  mkdir -p $TLS
-  tar xf $BATS_TEST_DIRNAME/server_ssl_wildcard.tar -C $TLS
-  sudo chown -R dokku:dokku $TLS
-  sed -i -e "s:^# ssl_certificate $DOKKU_ROOT/tls/server.crt;:ssl_certificate $DOKKU_ROOT/tls/server.crt;:g" \
-         -e "s:^# ssl_certificate_key $DOKKU_ROOT/tls/server.key;:ssl_certificate_key $DOKKU_ROOT/tls/server.key;:g" /etc/nginx/conf.d/dokku.conf
-  kill -HUP "$(< /var/run/nginx.pid)"; sleep 5
-}
-
-disable_tls_wildcard() {
-  TLS="/home/dokku/tls"
-  rm -rf $TLS
-  sed -i -e "s:^ssl_certificate $DOKKU_ROOT/tls/server.crt;:# ssl_certificate $DOKKU_ROOT/tls/server.crt;:g" \
-         -e "s:^ssl_certificate_key $DOKKU_ROOT/tls/server.key;:# ssl_certificate_key $DOKKU_ROOT/tls/server.key;:g" /etc/nginx/conf.d/dokku.conf
-  kill -HUP "$(< /var/run/nginx.pid)"; sleep 5
+  case "$TLS_TYPE" in
+    wildcard)
+      local TLS_ARCHIVE=server_ssl_wildcard.tar
+      ;;
+    sans)
+      local TLS_ARCHIVE=server_ssl_sans.tar
+      ;;
+    *)
+      local TLS_ARCHIVE=server_ssl.tar
+      ;;
+  esac
+  tar xf "$BATS_TEST_DIRNAME/$TLS_ARCHIVE" -C "$TLS"
+  sudo chown -R dokku:dokku "${TLS}/.."
 }
 
 custom_ssl_nginx_template() {
-  APP="$1"
-  [[ -z "$APP" ]] && APP="$TEST_APP"
-cat<<EOF > $DOKKU_ROOT/$APP/nginx.conf.template
-server {
-  listen      [::]:\$NGINX_PORT;
-  listen      \$NGINX_PORT;
-  server_name \$NOSSL_SERVER_NAME;
-  return 301 https://\\\$host:\$NGINX_SSL_PORT\\\$request_uri;
-}
+  local APP="$1"; local APP_REPO_DIR="$2"
+  [[ -z "$APP" ]] && local APP="$TEST_APP"
+  mkdir -p "$APP_REPO_DIR"
 
+  echo "injecting custom_ssl_nginx_template -> $APP_REPO_DIR/nginx.conf.sigil"
+cat<<EOF > "$APP_REPO_DIR/nginx.conf.sigil"
+{{ range \$port_map := .PROXY_PORT_MAP | split " " }}
+{{ \$port_map_list := \$port_map | split ":" }}
+{{ \$scheme := index \$port_map_list 0 }}
+{{ \$listen_port := index \$port_map_list 1 }}
+{{ \$upstream_port := index \$port_map_list 2 }}
+{{ if eq \$scheme "http" }}
 server {
-  listen      [::]:\$NGINX_SSL_PORT ssl spdy;
-  listen      \$NGINX_SSL_PORT ssl spdy;
-  server_name \$SSL_SERVER_NAME;
-\$SSL_DIRECTIVES
+  listen      [::]:{{ \$listen_port }};
+  listen      {{ \$listen_port }};
+  server_name {{ $.NOSSL_SERVER_NAME }} $CUSTOM_TEMPLATE_SSL_DOMAIN;
+  return 301 https://\$host:{{ $.NGINX_SSL_PORT }}\$request_uri;
+}
+{{ else if eq \$scheme "https"}}
+server {
+  listen      [::]:{{ $.NGINX_SSL_PORT }} ssl spdy;
+  listen      {{ $.NGINX_SSL_PORT }} ssl spdy;
+  {{ if $.SSL_SERVER_NAME }}server_name {{ $.SSL_SERVER_NAME }} $CUSTOM_TEMPLATE_SSL_DOMAIN; {{ end }}
+  {{ if $.NOSSL_SERVER_NAME }}server_name {{ $.NOSSL_SERVER_NAME }} $CUSTOM_TEMPLATE_SSL_DOMAIN; {{ end }}
+  ssl_certificate     {{ $.APP_SSL_PATH }}/server.crt;
+  ssl_certificate_key {{ $.APP_SSL_PATH }}/server.key;
 
   keepalive_timeout   70;
-  add_header          Alternate-Protocol  \$NGINX_SSL_PORT:npn-spdy/2;
+  add_header          Alternate-Protocol  {{ \$listen_port }}:npn-spdy/2;
   location    / {
-    proxy_pass  http://\$APP;
+    proxy_pass  http://{{ $.APP }}-{{ \$upstream_port }};
     proxy_http_version 1.1;
-    proxy_set_header Upgrade \\\$http_upgrade;
+    proxy_set_header Upgrade \$http_upgrade;
     proxy_set_header Connection "upgrade";
-    proxy_set_header Host \\\$http_host;
-    proxy_set_header X-Forwarded-Proto \\\$scheme;
-    proxy_set_header X-Forwarded-For \\\$remote_addr;
-    proxy_set_header X-Forwarded-Port \\\$server_port;
-    proxy_set_header X-Request-Start \\\$msec;
+    proxy_set_header Host \$http_host;
+    proxy_set_header X-Forwarded-Proto \$scheme;
+    proxy_set_header X-Forwarded-For \$remote_addr;
+    proxy_set_header X-Forwarded-Port \$server_port;
+    proxy_set_header X-Request-Start \$msec;
   }
-  include \$DOKKU_ROOT/\$APP/nginx.conf.d/*.conf;
+  include {{ $.DOKKU_ROOT }}/{{ $.APP }}/nginx.conf.d/*.conf;
 }
+{{ end }}{{ end }}
+
+{{ if $.DOKKU_APP_LISTENERS }}
+{{ range \$upstream_port := $.PROXY_UPSTREAM_PORTS | split " " }}
+upstream {{ $.APP }}-{{ \$upstream_port }} {
+{{ range \$listeners := $.DOKKU_APP_LISTENERS | split " " }}
+{{ \$listener_list := \$listeners | split ":" }}
+{{ \$listener_ip := index \$listener_list 0 }}
+{{ \$listener_port := index \$listener_list 1 }}
+  server {{ \$listener_ip }}:{{ \$upstream_port }};{{ end }}
+}
+{{ end }}{{ end }}
 EOF
+cat "$APP_REPO_DIR/nginx.conf.sigil"
 }
 
 custom_nginx_template() {
-  APP="$1"
-  [[ -z "$APP" ]] && APP="$TEST_APP"
-cat<<EOF > $DOKKU_ROOT/$APP/nginx.conf.template
+  local APP="$1"; local APP_REPO_DIR="$2"
+  [[ -z "$APP" ]] && local APP="$TEST_APP"
+  mkdir -p "$APP_REPO_DIR"
+
+  echo "injecting custom_nginx_template -> $APP_REPO_DIR/nginx.conf.sigil"
+cat<<EOF > "$APP_REPO_DIR/nginx.conf.sigil"
+{{ range \$port_map := .PROXY_PORT_MAP | split " " }}
+{{ \$port_map_list := \$port_map | split ":" }}
+{{ \$scheme := index \$port_map_list 0 }}
+{{ \$listen_port := index \$port_map_list 1 }}
+{{ \$upstream_port := index \$port_map_list 2 }}
+
 server {
-  listen      [::]:\$NGINX_PORT;
-  listen      \$NGINX_PORT;
-  server_name \$NOSSL_SERVER_NAME;
+  listen      [::]:{{ \$listen_port }};
+  listen      {{ \$listen_port }};
+  server_name {{ $.NOSSL_SERVER_NAME }} customtemplate.dokku.me;
 
   location    / {
-    proxy_pass  http://\$APP;
+    proxy_pass  http://{{ $.APP }}-{{ \$upstream_port }};
     proxy_http_version 1.1;
-    proxy_set_header Upgrade \\\$http_upgrade;
+    proxy_set_header Upgrade \$http_upgrade;
     proxy_set_header Connection "upgrade";
-    proxy_set_header Host \\\$http_host;
-    proxy_set_header X-Forwarded-Proto \\\$scheme;
-    proxy_set_header X-Forwarded-For \\\$remote_addr;
-    proxy_set_header X-Forwarded-Port \\\$server_port;
-    proxy_set_header X-Request-Start \\\$msec;
+    proxy_set_header Host \$http_host;
+    proxy_set_header X-Forwarded-Proto \$scheme;
+    proxy_set_header X-Forwarded-For \$remote_addr;
+    proxy_set_header X-Forwarded-Port \$server_port;
+    proxy_set_header X-Request-Start \$msec;
   }
-  include \$DOKKU_ROOT/\$APP/nginx.conf.d/*.conf;
+  include {{ $.DOKKU_ROOT }}/{{ $.APP }}/nginx.conf.d/*.conf;
 }
+{{ end }}
+
+{{ if $.DOKKU_APP_LISTENERS }}
+{{ range \$upstream_port := $.PROXY_UPSTREAM_PORTS | split " " }}
+upstream {{ $.APP }}-{{ \$upstream_port }} {
+{{ range \$listeners := $.DOKKU_APP_LISTENERS | split " " }}
+{{ \$listener_list := \$listeners | split ":" }}
+{{ \$listener_ip := index \$listener_list 0 }}
+{{ \$listener_port := index \$listener_list 1 }}
+  server {{ \$listener_ip }}:{{ \$upstream_port }};{{ end }}
+}
+{{ end }}{{ end }}
+EOF
+cat "$APP_REPO_DIR/nginx.conf.sigil"
+}
+
+bad_custom_nginx_template() {
+  local APP="$1"; local APP_REPO_DIR="$2"
+  [[ -z "$APP" ]] && local APP="$TEST_APP"
+  echo "injecting bad_custom_nginx_template -> $APP_REPO_DIR/nginx.conf.sigil"
+cat<<EOF > "$APP_REPO_DIR/nginx.conf.sigil"
+some lame nginx config
 EOF
 }

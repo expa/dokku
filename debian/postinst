@@ -1,9 +1,24 @@
-#!/bin/sh
-set -e
+#!/bin/bash
+set -eo pipefail; [[ $TRACE ]] && set -x
 
-. /usr/share/debconf/confmodule
+if [[ -e /usr/share/debconf/confmodule ]]; then
+  # shellcheck disable=SC1091
+  . /usr/share/debconf/confmodule
+fi
 
 readonly DOKKU_ROOT="${DOKKU_ROOT:-/home/dokku}"
+readonly DOKKU_LIB_ROOT="${DOKKU_LIB_PATH:-/var/lib/dokku}"
+
+call-sshcommand() {
+  if [[ -x /usr/local/bin/sshcommand ]]; then
+    /usr/local/bin/sshcommand "$@"
+  elif [[ -x /usr/bin/sshcommand ]]; then
+    /usr/bin/sshcommand "$@"
+  else
+    echo "Unable to find sshcommand binary" 1>&2
+    exit 1
+  fi
+}
 
 case "$1" in
   abort-upgrade|abort-remove|abort-deconfigure)
@@ -13,47 +28,75 @@ case "$1" in
     mandb
     [ ! -x /usr/bin/docker.io ] || ln -sf /usr/bin/docker.io /usr/local/bin/docker
     modprobe aufs || echo "WARNING: Restart server to finish installing dokku!"
-    sshcommand create dokku /usr/local/bin/dokku
+    call-sshcommand create dokku /usr/bin/dokku
+
     egrep -i "^docker" /etc/group || groupadd docker
     usermod -aG docker dokku
 
-    # setup plugin directories
-    # should be replaced by `plugn init`
-    mkdir -p /var/lib/dokku/core-plugins/available /var/lib/dokku/plugins/available
-    mkdir -p /var/lib/dokku/core-plugins/enabled /var/lib/dokku/plugins/enabled
-    touch /var/lib/dokku/core-plugins/config.toml /var/lib/dokku/plugins/config.toml
+    echo "Setting up storage directories"
+    mkdir -p ${DOKKU_LIB_ROOT}/data ${DOKKU_LIB_ROOT}/data/storage
+    chown dokku:dokku -R ${DOKKU_LIB_ROOT}/data
 
-    # migrate old plugins
-    find /var/lib/dokku/plugins/ -mindepth 1 -maxdepth 1 -type d -printf '%f\n' | while read -r plugin; do
+    echo "Setting up plugin directories"
+    # should be replaced by `plugn init`
+    mkdir -p ${DOKKU_LIB_ROOT}/core-plugins/available ${DOKKU_LIB_ROOT}/plugins/available
+    mkdir -p ${DOKKU_LIB_ROOT}/core-plugins/enabled ${DOKKU_LIB_ROOT}/plugins/enabled
+    touch ${DOKKU_LIB_ROOT}/core-plugins/config.toml ${DOKKU_LIB_ROOT}/plugins/config.toml
+
+    echo "Migrating old plugins"
+    find ${DOKKU_LIB_ROOT}/plugins/ -mindepth 1 -maxdepth 1 -type d -printf '%f\n' | while read -r plugin; do
       if [ "$plugin" = "available" ] || [ "$plugin" = "enabled" ]; then
         continue
-      elif [ -f /var/lib/dokku/plugins/$plugin/.core ]; then
-        rm -rf /var/lib/dokku/plugins/$plugin
-      elif [ ! -d /var/lib/dokku/plugins/available/$plugin ]; then
-        mv /var/lib/dokku/plugins/$plugin /var/lib/dokku/plugins/available;
+      elif [ -f ${DOKKU_LIB_ROOT}/plugins/$plugin/.core ]; then
+        rm -rf ${DOKKU_LIB_ROOT}/plugins/$plugin
+      elif [ ! -d ${DOKKU_LIB_ROOT}/plugins/available/$plugin ]; then
+        mv ${DOKKU_LIB_ROOT}/plugins/$plugin ${DOKKU_LIB_ROOT}/plugins/available;
       fi
     done
 
-    # enable all core plugins
-    find /var/lib/dokku/core-plugins/available -mindepth 1 -maxdepth 1 -type d -printf '%f\n' | while read -r plugin; do
-      if [ ! -d /var/lib/dokku/plugins/available/$plugin ]; then
-        ln -s /var/lib/dokku/core-plugins/available/$plugin /var/lib/dokku/plugins/available/$plugin;
-        PLUGIN_PATH=/var/lib/dokku/core-plugins plugn enable $plugin
-        PLUGIN_PATH=/var/lib/dokku/plugins plugn enable $plugin
+    echo "Enabling all core plugins"
+    find ${DOKKU_LIB_ROOT}/core-plugins/available -mindepth 1 -maxdepth 1 -type d -printf '%f\n' | while read -r plugin; do
+      if [ ! -d ${DOKKU_LIB_ROOT}/plugins/available/$plugin ]; then
+        ln -s ${DOKKU_LIB_ROOT}/core-plugins/available/$plugin ${DOKKU_LIB_ROOT}/plugins/available/$plugin;
+        PLUGIN_PATH=${DOKKU_LIB_ROOT}/core-plugins plugn enable $plugin
+        PLUGIN_PATH=${DOKKU_LIB_ROOT}/plugins plugn enable $plugin
       fi
     done
+    find -L ${DOKKU_LIB_ROOT} -type l -delete
+    chown dokku:dokku -R ${DOKKU_LIB_ROOT}/plugins ${DOKKU_LIB_ROOT}/core-plugins
 
+    echo "Ensure proper sshcommand path"
+    echo '/usr/bin/dokku' > "${DOKKU_ROOT}/.sshcommand"
+    if [[ -f .ssh/authorized_keys ]]; then
+      sed -i.bak 's#/usr/local/bin/dokku#/usr/bin/dokku#' "${DOKKU_ROOT}/.ssh/authorized_keys"
+      rm "${DOKKU_ROOT}/.ssh/authorized_keys"
+    fi
+
+    echo "Install all core plugins"
     dokku plugin:install --core
 
-    rm -f /home/dokku/VERSION
-    cp /var/lib/dokku/STABLE_VERSION /home/dokku/VERSION
+    rm -f ${DOKKU_ROOT}/VERSION
+    cp ${DOKKU_LIB_ROOT}/STABLE_VERSION ${DOKKU_ROOT}/VERSION
 
-    if [ -f /etc/init/dokku-installer.conf ] && service dokku-installer status 2> /dev/null | grep waiting; then
-        sudo service dokku-installer start
+    if [[ -f /etc/nginx/conf.d/dokku-installer.conf ]]; then
+      echo "Setting up dokku-installer"
+      /usr/share/dokku/contrib/dokku-installer.py onboot
+
+      if command -v systemctl &>/dev/null; then
+        echo "Enabling dokku-installer"
+        systemctl enable dokku-installer
+      fi
+
+      installer_status="$(service dokku-installer status 2> /dev/null || true)"
+      if echo $installer_status | grep -Eq "(inactive|waiting)" > /dev/null; then
+        echo "Starting dokku-installer"
+        service dokku-installer start || echo "Unable to start dokku-installer"
+      fi
     fi
 
     db_get "dokku/web_config"
     if [ "$RET" = "true" ]; then
+      db_stop
       exit 0
     fi
 
@@ -70,7 +113,9 @@ case "$1" in
 
     if [ -z "${DEBCONF_RECONFIGURE}" ]; then
       db_get "dokku/key_file"
-      sshcommand acl-add dokku default < "$RET"
+      if [ -f "$RET" ]; then
+        call-sshcommand acl-add dokku default < "$RET" || true
+      fi
     fi
     ;;
 
@@ -80,4 +125,5 @@ case "$1" in
     ;;
 esac
 
+db_stop
 exit 0

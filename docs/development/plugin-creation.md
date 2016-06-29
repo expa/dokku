@@ -3,38 +3,102 @@
 If you create your own plugin:
 
 1. Take a look at the plugins shipped with dokku and hack away!
-2. Check out the [list of triggers](http://progrium.viewdocs.io/dokku/development/plugin-triggers) your plugin can implement.
+2. Check out the [list of triggers](/dokku/development/plugin-triggers) your plugin can implement.
 3. Upload your plugin to github with a repository name in form of `dokku-<name>` (e.g. `dokku-mariadb`)
-4. Edit [this page](http://progrium.viewdocs.io/dokku/plugins) and add a link to it.
+4. Edit [this page](/dokku/plugins) and add a link to it.
 5. Subscribe to the [dokku development blog](http://progrium.com) to be notified about API changes and releases
 
-### Sample plugin
 
-The below plugin is a dummy `dokku hello` plugin. If your plugin exposes commands, this is a good template for your `commands` file:
+### Sample plugin
+The below plugin is a dummy `dokku hello` plugin.
+
+hello/subcommands/default
 
 ```shell
 #!/usr/bin/env bash
 set -eo pipefail; [[ $DOKKU_TRACE ]] && set -x
 source "$PLUGIN_CORE_AVAILABLE_PATH/common/functions"
 
+hello_main_cmd() {
+  declare desc="prints Hello \$APP"
+  local cmd="hello"
+  # Support --app/$DOKKU_APP_NAME flag
+  # Use the following lines to reorder args into "$cmd $DOKKU_APP_NAME $@""
+  local argv=("$@")
+  [[ ${argv[0]} == "$cmd" ]] && shift 1
+  [[ ! -z $DOKKU_APP_NAME ]] && set -- $DOKKU_APP_NAME $@
+  set -- $cmd $@
+  ##
+
+  [[ -z $2 ]] && echo "Please specify an app to run the command on" && exit 1
+  verify_app_name "$2"
+  local APP="$2";
+
+  echo "Hello $APP"
+}
+
+hello_main_cmd "$@"
+```
+
+hello/subcommands/world
+
+```shell
+#!/usr/bin/env bash
+set -eo pipefail; [[ $DOKKU_TRACE ]] && set -x
+source "$PLUGIN_CORE_AVAILABLE_PATH/common/functions"
+
+hello_world_cmd() {
+  declare desc="prints Hello World"
+  local cmd="hello:world"
+  # Support --app/$DOKKU_APP_NAME flag
+  # Use the following lines to reorder args into "$cmd $DOKKU_APP_NAME $@""
+  local argv=("$@")
+  [[ ${argv[0]} == "$cmd" ]] && shift 1
+  [[ ! -z $DOKKU_APP_NAME ]] && set -- $DOKKU_APP_NAME $@
+  set -- $cmd $@
+  ##
+
+  [[ -z $2 ]] && echo "Please specify an app to run the command on" && exit 1
+  verify_app_name "$2"
+  local APP="$2";
+
+  echo "Hello world"
+}
+
+hello_world_cmd "$@"
+```
+
+hello/commands
+
+```shell
+#!/usr/bin/env bash
+set -eo pipefail; [[ $DOKKU_TRACE ]] && set -x
+
 case "$1" in
-  hello)
-    [[ -z $2 ]] && dokku_log_fail "Please specify an app to run the command on"
-    APP="$2"; IMAGE_TAG=$(get_running_image_tag $APP); IMAGE=$(get_app_image_name $APP $IMAGE_TAG)
-    verify_app_name "$APP"
-
-    echo "Hello $APP"
-    ;;
-
-  hello:world)
-    echo "Hello world"
-    ;;
-
-  help)
-    cat<<EOF
+  help | hello:help)
+    help_content_func () {
+      declare desc="return help_content string"
+      cat<<help_content
     hello <app>, Says "Hello <app>"
     hello:world, Says "Hello world"
-EOF
+help_content
+    }
+
+    if [[ $1 = "hello:help" ]] ; then
+        echo -e 'Usage: dokku hello[:world] [<app>]'
+        echo ''
+        echo 'Say Hello World.'
+        echo ''
+        echo 'Example:'
+        echo ''
+        echo '$ dokku hello:world'
+        echo 'Hello world'
+        echo ''
+        echo 'Additional commands:'
+        help_content_func | sort | column -c2 -t -s,
+    else
+        help_content_func
+    fi
     ;;
 
   *)
@@ -89,4 +153,6 @@ A few notes:
   dokku config:unset --no-restart APP KEY1 [KEY2 ...]
   ```
 - From time to time you may want to allow other plugins access to (some of) your plugin's functionality. You can expose this by including a `functions` file in your plugin for others to source. Consider all functions in that file to be publicly accessible by other plugins. Any functions not wished to be made "public" should reside within your plugin trigger or commands files.
-- As of 0.4.0, we allow image tagging and deployment of said tagged images. Therefore, hard-coding of `$IMAGE` as `dokku/$APP` is no longer sufficient. Instead, for non `pre/post-build-*` plugins, use `get_running_image_tag()` & `get_app_image_name()` as sourced from common/functions. See the [plugin triggers](http://progrium.viewdocs.io/dokku/development/plugin-triggers) doc for examples.
+- As of 0.4.0, we allow image tagging and deployment of said tagged images. Therefore, hard-coding of `$IMAGE` as `dokku/$APP` is no longer sufficient. Instead, for non `pre/post-build-*` plugins, use `get_running_image_tag()` & `get_app_image_name()` as sourced from common/functions. See the [plugin triggers](/dokku/development/plugin-triggers) doc for examples.
+- As of 0.5.0, we use container labels to help cleanup intermediate containers with `dokku cleanup`. If manually calling `docker run`, include `$DOKKU_GLOBAL_RUN_ARGS`. This will ensure you intermediate containers labeled correctly.
+- As of 0.6.0, we advise you to *not* call the dokku binary directly from within plugins. Clients using the `--app` argument are potentially broken, amongst other issues, when doing so. Instead, please source the `functions` file for a given plugin when attempting to call dokku internal functions

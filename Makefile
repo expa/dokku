@@ -1,7 +1,8 @@
 DOKKU_VERSION = master
 
-SSHCOMMAND_URL ?= https://raw.githubusercontent.com/progrium/sshcommand/master/sshcommand
-PLUGN_URL ?= https://github.com/progrium/dokku/releases/download/v0.4.0/plugn_0.2.0_linux_x86_64.tgz
+SSHCOMMAND_URL ?= https://raw.githubusercontent.com/dokku/sshcommand/v0.4.0/sshcommand
+PLUGN_URL ?= https://github.com/dokku/plugn/releases/download/v0.2.1/plugn_0.2.1_linux_x86_64.tgz
+SIGIL_URL ?= https://github.com/gliderlabs/sigil/releases/download/v0.4.0/sigil_0.4.0_Linux_x86_64.tgz
 STACK_URL ?= https://github.com/gliderlabs/herokuish.git
 PREBUILT_STACK_URL ?= gliderlabs/herokuish:latest
 DOKKU_LIB_ROOT ?= /var/lib/dokku
@@ -26,6 +27,7 @@ endif
 
 include tests.mk
 include deb.mk
+include arch.mk
 
 all:
 	# Type "make install" to install.
@@ -38,7 +40,6 @@ package_cloud:
 	package_cloud push dokku/dokku/ubuntu/trusty herokuish*.deb
 	package_cloud push dokku/dokku/ubuntu/trusty sshcommand*.deb
 	package_cloud push dokku/dokku/ubuntu/trusty plugn*.deb
-	package_cloud push dokku/dokku/ubuntu/trusty rubygem*.deb
 	package_cloud push dokku/dokku/ubuntu/trusty dokku*.deb
 
 packer:
@@ -57,13 +58,14 @@ copyfiles:
 		rm -rf ${PLUGINS_PATH}/$$plugin && \
 		cp -R plugins/$$plugin ${CORE_PLUGINS_PATH}/available && \
 		ln -s ${CORE_PLUGINS_PATH}/available/$$plugin ${PLUGINS_PATH}/available; \
+		find /var/lib/dokku/ -xtype l -delete;\
 		PLUGIN_PATH=${CORE_PLUGINS_PATH} plugn enable $$plugin ;\
 		PLUGIN_PATH=${PLUGINS_PATH} plugn enable $$plugin ;\
 		done
-	chown dokku:dokku -R ${PLUGINS_PATH} ${CORE_PLUGINS_PATH}
+	chown dokku:dokku -R ${PLUGINS_PATH} ${CORE_PLUGINS_PATH} || true
 	$(MAKE) addman
 
-addman:
+addman: help2man
 	mkdir -p /usr/local/share/man/man1
 	help2man -Nh help -v version -n "configure and get information from your dokku installation" -o /usr/local/share/man/man1/dokku.1 dokku
 	mandb
@@ -72,12 +74,12 @@ version:
 	git describe --tags > ~dokku/VERSION  2> /dev/null || echo '~${DOKKU_VERSION} ($(shell date -uIminutes))' > ~dokku/VERSION
 
 plugin-dependencies: plugn
-	dokku plugin:install-dependencies --core
+	sudo -E dokku plugin:install-dependencies --core
 
 plugins: plugn docker
-	dokku plugin:install --core
+	sudo -E dokku plugin:install --core
 
-dependencies: apt-update sshcommand plugn docker help2man man-db
+dependencies: apt-update sshcommand plugn docker help2man man-db sigil
 	$(MAKE) -e stack
 
 apt-update:
@@ -98,12 +100,16 @@ plugn:
 	wget -qO /tmp/plugn_latest.tgz ${PLUGN_URL}
 	tar xzf /tmp/plugn_latest.tgz -C /usr/local/bin
 
+sigil:
+	wget -qO /tmp/sigil_latest.tgz ${SIGIL_URL}
+	tar xzf /tmp/sigil_latest.tgz -C /usr/local/bin
+
 docker: aufs
 	apt-get install -qq -y curl
 	egrep -i "^docker" /etc/group || groupadd docker
 	usermod -aG docker dokku
 ifndef CI
-	curl -sSL https://get.docker.com/ | sh
+	wget -nv -O - https://get.docker.com/ | sh
 ifdef DOCKER_VERSION
 	apt-get install -qq -y docker-engine=${DOCKER_VERSION} || (apt-cache madison docker-engine ; exit 1)
 endif
@@ -123,7 +129,7 @@ ifdef BUILD_STACK
 else
 ifeq ($(shell echo ${PREBUILT_STACK_URL} | egrep -q 'http.*://|file://' && echo $$?),0)
 	@echo "Start importing herokuish from ${PREBUILT_STACK_URL}"
-	docker images | grep gliderlabs/herokuish || curl --silent -L ${PREBUILT_STACK_URL} | gunzip -cd | docker import - gliderlabs/herokuish
+	docker images | grep gliderlabs/herokuish || wget -nv -O - ${PREBUILT_STACK_URL} | gunzip -cd | docker import - gliderlabs/herokuish
 else
 	@echo "Start pulling herokuish from ${PREBUILT_STACK_URL}"
 	docker images | grep gliderlabs/herokuish || docker pull ${PREBUILT_STACK_URL}
@@ -140,12 +146,7 @@ count:
 	@find tests -type f -not -name .DS_Store | xargs cat | sed 's/^$$//g' | wc -l
 
 dokku-installer:
-	apt-get install -qq -y ruby
-	test -f /var/lib/dokku/.dokku-installer-created || gem install rack -v 1.5.2 --no-rdoc --no-ri
-	test -f /var/lib/dokku/.dokku-installer-created || gem install rack-protection -v 1.5.3 --no-rdoc --no-ri
-	test -f /var/lib/dokku/.dokku-installer-created || gem install sinatra -v 1.4.5 --no-rdoc --no-ri
-	test -f /var/lib/dokku/.dokku-installer-created || gem install tilt -v 1.4.1 --no-rdoc --no-ri
-	test -f /var/lib/dokku/.dokku-installer-created || ruby contrib/dokku-installer.rb onboot
+	test -f /var/lib/dokku/.dokku-installer-created || python contrib/dokku-installer.py onboot
 	test -f /var/lib/dokku/.dokku-installer-created || service dokku-installer start
 	test -f /var/lib/dokku/.dokku-installer-created || service nginx reload
 	test -f /var/lib/dokku/.dokku-installer-created || touch /var/lib/dokku/.dokku-installer-created
@@ -155,4 +156,3 @@ vagrant-acl-add:
 
 vagrant-dokku:
 	vagrant ssh -- "sudo -H -u root bash -c 'dokku $(RUN_ARGS)'"
-

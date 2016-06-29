@@ -3,71 +3,186 @@
 Dokku uses nginx as its server for routing requests to specific applications. By default, access and error logs are written for each app to `/var/log/nginx/${APP}-access.log` and `/var/log/nginx/${APP}-error.log` respectively
 
 ```
-nginx:access-logs <app> [-t]                     Show the nginx access logs for an application (-t follows)
-nginx:build-config <app>                         (Re)builds nginx config for given app
-nginx:disable <app>                              Disable nginx for an application (forces container binding to external interface)
-nginx:enable <app>                               Enable nginx for an application
-nginx:error-logs <app> [-t]                      Show the nginx error logs for an application (-t follows)
+nginx:access-logs <app> [-t]                                                                 Show the nginx access logs for an application (-t follows)
+nginx:build-config <app>                                                                     (Re)builds nginx config for given app
+nginx:error-logs <app> [-t]                                                                  Show the nginx error logs for an application (-t follows)
 ```
 
 ## Customizing the nginx configuration
 
-> New as of 0.3.10.
+> New as of 0.5.0
 
-Dokku currently templates out an nginx configuration that is included in the `nginx-vhosts` plugin. If you'd like to provide a custom template for your application, there are a few options:
+Dokku uses a templating library by the name of [sigil](https://github.com/gliderlabs/sigil) to generate nginx configuration for each app. If you'd like to provide a custom template for your application, there are a couple options:
 
-- Copy the existing template - ssl or non-ssl - into your application repository's root directory as the file `nginx.conf.template`.
-- Create a template file in `/home/dokku/APP` named one of the following:
-  - `nginx.conf.template` (since 0.3.10)
-  - `nginx.conf.ssl_terminated.template` (since 0.4.0)
-  - `nginx.ssl.conf.template` (since 0.4.2)
+- Copy the following example template to a file named `nginx.conf.sigil` and either:
+  - check it into the root of your app repo
+  - `ADD` it to your dockerfile `WORKDIR`
+  - if your dockerfile has no `WORKDIR`, `ADD` it to the `/app` folder
 
-> If placed on the dokku server, the template file **must** be owned by user and group `dokku:dokku`.
+> When using a custom `nginx.conf.sigil` file, depending upon your application configuration, you *may* be exposing the file externally. As this file is extracted before the container is run, you can, safely delete it in a custom `entrypoint.sh` configured in a Dockerfile `ENTRYPOINT`.
 
-For instance - assuming defaults - to customize the nginx template in use for the `myapp` application, create the file `nginx.conf.template` in your repo or on disk with the with the following contents:
+### Example Custom Template
 
+Use case: add an `X-Served-By` header to requests
 ```
 server {
-  listen      [::]:80;
-  listen      80;
-  server_name $NOSSL_SERVER_NAME;
-  access_log  /var/log/nginx/${APP}-access.log;
-  error_log   /var/log/nginx/${APP}-error.log;
+  listen      [::]:{{ .NGINX_PORT }};
+  listen      {{ .NGINX_PORT }};
+  server_name {{ .NOSSL_SERVER_NAME }};
+  access_log  /var/log/nginx/{{ .APP }}-access.log;
+  error_log   /var/log/nginx/{{ .APP }}-error.log;
 
   # set a custom header for requests
   add_header X-Served-By www-ec2-01;
 
+  gzip on;
+  gzip_min_length  1100;
+  gzip_buffers  4 32k;
+  gzip_types    text/css text/javascript text/xml text/plain text/x-component application/javascript application/x-javascript application/json application/xml  application/rss+xml font/truetype application/x-font-ttf font/opentype application/vnd.ms-fontobject image/svg+xml;
+  gzip_vary on;
+  gzip_comp_level  6;
+
   location    / {
-    proxy_pass  http://$APP;
+    proxy_pass  http://{{ .APP }};
     proxy_http_version 1.1;
-    proxy_set_header Upgrade \$http_upgrade;
+    proxy_set_header Upgrade $http_upgrade;
     proxy_set_header Connection "upgrade";
-    proxy_set_header Host \$http_host;
-    proxy_set_header X-Forwarded-Proto \$scheme;
-    proxy_set_header X-Forwarded-For \$remote_addr;
-    proxy_set_header X-Forwarded-Port \$server_port;
-    proxy_set_header X-Request-Start \$msec;
+    proxy_set_header Host $http_host;
+    proxy_set_header X-Forwarded-Proto $scheme;
+    proxy_set_header X-Forwarded-For $remote_addr;
+    proxy_set_header X-Forwarded-Port $server_port;
+    proxy_set_header X-Request-Start $msec;
   }
-  include $DOKKU_ROOT/$APP/nginx.conf.d/*.conf;
+  include {{ .DOKKU_ROOT }}/{{ .APP }}/nginx.conf.d/*.conf;
+}
+
+upstream {{ .APP }} {
+{{ range .DOKKU_APP_LISTENERS | split " " }}
+  server {{ . }};
+{{ end }}
 }
 ```
 
-The above is a sample http configuration that adds an `X-Served-By` header to requests.
+### Available template variables
+```
+{{ .APP }}                          Application name
+{{ .APP_SSL_PATH }}                 Path to SSL certificate and key
+{{ .DOKKU_ROOT }}                   Global dokku root directory (ex: app dir would be `{{ .DOKKU_ROOT }}/{{ .APP }}`)
+{{ .DOKKU_APP_LISTENERS }}          List of IP:PORT pairs of app containers
+{{ .NGINX_PORT }}                   Non-SSL nginx listener port (same as `DOKKU_NGINX_PORT` config var)
+{{ .NGINX_SSL_PORT }}               SSL nginx listener port (same as `DOKKU_NGINX_SSL_PORT` config var)
+{{ .NOSSL_SERVER_NAME }}            List of non-SSL VHOSTS
+{{ .PROXY_PORT_MAP }}               List of port mappings (same as `DOKKU_PROXY_PORT_MAP` config var)
+{{ .PROXY_UPSTREAM_PORTS }}         List of configured upstream ports (derived from `DOKKU_PROXY_PORT_MAP` config var)
+{{ .RAW_TCP_PORTS }}                List of exposed tcp ports as defined by Dockerfile `EXPOSE` directive (**Dockerfile apps only**)
+{{ .SSL_INUSE }}                    Boolean set when an app is SSL-enabled
+{{ .SSL_SERVER_NAME }}              List of SSL VHOSTS
+```
 
-A few tips for custom nginx templates:
+> NOTE: Application config variables are available for use in custom templates. To do so, use the form of `{{ var "FOO" }}` to access a variable named `FOO`.
 
-- Special characters - dollar signs, spaces inside of quotes, etc. - should be escaped with a single backslash or can cause deploy failures.
-- Templated files will be validated via `nginx -t`.
-- Application environment variables can be used within your nginx configuration.
 
-After your changes a `dokku deploy myapp` will regenerate the `/home/dokku/myapp/nginx.conf` file which is then used.
+### Example HTTP to HTTPS Custom Template
+Use case: a simple dockerfile app that includes `EXPOSE 80`
+```
+server {
+  listen      [::]:80;
+  listen      80;
+  server_name {{ .NOSSL_SERVER_NAME }};
+
+  access_log  /var/log/nginx/{{ .APP }}-access.log;
+  error_log   /var/log/nginx/{{ .APP }}-error.log;
+
+  return 301 https://$host:443$request_uri;
+}
+server {
+  listen      [::]:443 ssl spdy;
+  listen      443 ssl spdy;
+  {{ if .SSL_SERVER_NAME }}server_name {{ .SSL_SERVER_NAME }}; {{ end }}
+
+  access_log  /var/log/nginx/{{ .APP }}-access.log;
+  error_log   /var/log/nginx/{{ .APP }}-error.log;
+
+  ssl_certificate     {{ .APP_SSL_PATH }}/server.crt;
+  ssl_certificate_key {{ .APP_SSL_PATH }}/server.key;
+
+  keepalive_timeout   70;
+  add_header          Alternate-Protocol  443:npn-spdy/2;
+  location    / {
+    proxy_pass  http://{{ .APP }};
+    proxy_http_version 1.1;
+    proxy_set_header Upgrade $http_upgrade;
+    proxy_set_header Connection "upgrade";
+    proxy_set_header Host $http_host;
+    proxy_set_header X-Forwarded-Proto $scheme;
+    proxy_set_header X-Forwarded-For $remote_addr;
+    proxy_set_header X-Forwarded-Port $server_port;
+    proxy_set_header X-Request-Start $msec;
+  }
+  include {{ .DOKKU_ROOT }}/{{ .APP }}/nginx.conf.d/*.conf;
+}
+
+upstream {{ .APP }} {
+{{ range .DOKKU_APP_LISTENERS | split " " }}
+  server {{ . }};
+{{ end }}
+}
+```
+
+### Example using new proxy port mapping
+```
+{{ range $port_map := .PROXY_PORT_MAP | split " " }}
+{{ $port_map_list := $port_map | split ":" }}
+{{ $scheme := index $port_map_list 0 }}
+{{ $listen_port := index $port_map_list 1 }}
+{{ $upstream_port := index $port_map_list 2 }}
+
+server {
+  listen      [::]:{{ $listen_port }};
+  listen      {{ $listen_port }};
+  server_name {{ $.NOSSL_SERVER_NAME }};
+  access_log  /var/log/nginx/{{ $.APP }}-access.log;
+  error_log   /var/log/nginx/{{ $.APP }}-error.log;
+
+  location    / {
+
+    gzip on;
+    gzip_min_length  1100;
+    gzip_buffers  4 32k;
+    gzip_types    text/css text/javascript text/xml text/plain text/x-component application/javascript application/x-javascript application/json application/xml  application/rss+xml font/truetype application/x-font-ttf font/opentype application/vnd.ms-fontobject image/svg+xml;
+    gzip_vary on;
+    gzip_comp_level  6;
+
+    proxy_pass  http://{{ $.APP }}-{{ $upstream_port }};
+    proxy_http_version 1.1;
+    proxy_set_header Upgrade $http_upgrade;
+    proxy_set_header Connection "upgrade";
+    proxy_set_header Host $http_host;
+    proxy_set_header X-Forwarded-Proto $scheme;
+    proxy_set_header X-Forwarded-For $remote_addr;
+    proxy_set_header X-Forwarded-Port $server_port;
+    proxy_set_header X-Request-Start $msec;
+  }
+  include {{ $.DOKKU_ROOT }}/{{ $.APP }}/nginx.conf.d/*.conf;
+}
+
+{{ range $upstream_port := $.PROXY_UPSTREAM_PORTS | split " " }}
+upstream {{ $.APP }}-{{ $upstream_port }} {
+{{ range $listeners := $.DOKKU_APP_LISTENERS | split " " }}
+{{ $listener_list := $listeners | split ":" }}
+{{ $listener_ip := index $listener_list 0 }}
+{{ $listener_port := index $listener_list 1 }}
+  server {{ $listener_ip }}:{{ $upstream_port }};{{ end }}
+}
+{{ end }}
+```
 
 ### Customizing via configuration files included by the default templates
 
-The default nginx.conf- templates will include everything from your apps `nginx.conf.d/` subdirectory in the main `server {}` block (see above):
+The default nginx.conf template will include everything from your apps `nginx.conf.d/` subdirectory in the main `server {}` block (see above):
 
 ```
-include $DOKKU_ROOT/$APP/nginx.conf.d/*.conf;
+include {{ .DOKKU_ROOT }}/{{ .APP }}/nginx.conf.d/*.conf;
 ```
 
 That means you can put additional configuration in separate files, for example to limit the uploaded body size to 50 megabytes, do
@@ -79,123 +194,23 @@ chown dokku:dokku /home/dokku/myapp/nginx.conf.d/upload.conf
 service nginx reload
 ```
 
+The example above uses additional configuration files directly on the dokku host. Unlike the `nginx.conf.sigil` file, these additional files will not be copied over from your application repo, and thus need to be placed in the `/home/dokku/myapp/nginx.conf.d/` directory manually.
+
+## Domains plugin
+
+See the [domain-configuration documentation](/dokku/deployment/domain-configuration/).
+
 ## Customizing hostnames
 
-Applications typically have the following structure for their hostname:
+See the [customizing hostnames documentation](/dokku/deployment/domain-configuration/#customizing-hostnames).
 
-```
-scheme://subdomain.domain.tld
-```
+## Disabling VHOSTS
 
-The `subdomain` is inferred from the pushed application name, while the `domain` is set during initial configuration in the `$DOKKU_ROOT/VHOST` file.
-
-You can optionally override this in a plugin by implementing the `nginx-hostname` plugin trigger. For example, you can reverse the subdomain with the following sample `nginx-hostname` plugin trigger:
-
-```shell
-#!/usr/bin/env bash
-set -eo pipefail; [[ $DOKKU_TRACE ]] && set -x
-
-APP="$1"; SUBDOMAIN="$2"; VHOST="$3"
-
-NEW_SUBDOMAIN=`echo $SUBDOMAIN | rev`
-echo "$NEW_SUBDOMAIN.$VHOST"
-```
-
-If the `nginx-hostname` has no output, the normal hostname algorithm will be executed.
-
-You can also use the built-in `domains` plugin to handle:
-
-### Disabling VHOSTS
-
-If desired, it is possible to disable vhosts by setting the environment variable `NO_VHOST=1`:
-
-```shell
-dokku config:set myapp NO_VHOST=1
-```
-
-On subsequent deploys, the nginx virtualhost will be discarded. This is useful when deploying internal-facing services that should not be publicly routeable. As of 0.4.0, nginx will still be configured to proxy your app on some random high port. This allows internal services to maintain the same port between deployments. You may change this port by setting `DOKKU_NGINX_PORT` and/or `DOKKU_NGINX_SSL_PORT` (for services configured to use SSL.)
-
-### Domains plugin
-
-> New as of 0.3.10
-
-```shell
-domains:add <app> DOMAIN                         Add a custom domain to app
-domains <app>                                    List custom domains for app
-domains:clear <app>                              Clear all custom domains for app
-domains:remove <app> DOMAIN                      Remove a custom domain from app
-```
-
-The domains plugin allows you to specify custom domains for applications. This plugin is aware of any ssl certificates that are imported via `nginx:import-ssl`. Be aware that setting `NO_VHOST` will override any custom domains.
-
-Custom domains are also backed up via the built-in `backup` plugin
-
-```shell
-# where `myapp` is the name of your app
-
-# add a domain to an app
-dokku domains:add myapp example.com
-
-# list custom domains for app
-dokku domains myapp
-
-# clear all custom domains for app
-dokku domains:clear myapp
-
-# remove a custom domain from app
-dokku domains:remove myapp example.com
-```
-
-## Container network interface binding
-
-> New as of 0.3.13
-
-The deployed docker container running your app's web process will bind to either the internal docker network interface (i.e. `docker inspect --format '{{ .NetworkSettings.IPAddress }}' $CONTAINER_ID`) or an external interface (i.e. 0.0.0.0) depending on dokku's VHOST configuration. Dokku will attempt to bind to the internal docker network interface unless you specifically set NO_VHOST for the given app or your dokku installation is not setup to use VHOSTS (i.e. $DOKKU_ROOT/VHOST is missing or $DOKKU_ROOT/HOSTNAME is set to an IPv4 or IPv6 address)
-
-```shell
-# container bound to docker interface
-root@dokku:~/dokku# docker ps
-CONTAINER ID        IMAGE                      COMMAND                CREATED              STATUS              PORTS               NAMES
-1b88d8aec3d1        dokku/node-js-app:latest   "/bin/bash -c '/star   About a minute ago   Up About a minute                       goofy_albattani
-
-root@dokku:~/dokku# docker inspect --format '{{ .NetworkSettings.IPAddress }}' goofy_albattani
-172.17.0.6
-
-# container bound to all interfaces (previous default)
-root@dokku:/home/dokku# docker ps
-CONTAINER ID        IMAGE                      COMMAND                CREATED              STATUS              PORTS                     NAMES
-d6499edb0edb        dokku/node-js-app:latest   "/bin/bash -c '/star   About a minute ago   Up About a minute   0.0.0.0:49153->5000/tcp   nostalgic_tesla
-```
+See the [disabling vhosts documentation](/dokku/deployment/domain-configuration/#disabling-vhosts).
 
 ## Default site
 
-By default, dokku will route any received request with an unknown HOST header value to the lexicographically first site in the nginx config stack. If this is not the desired behavior, you may want to add the following configuration to the global nginx configuration. This will catch all unknown HOST header values and return a `410 Gone` response. You can replace the `return 410;` with `return 444;` which will cause nginx to not respond to requests that do not match known domains (connection refused).
-
-```
-server {
-  listen 80 default_server;
-  listen [::]:80 default_server;
-
-  server_name _;
-  return 410;
-  log_not_found off;
-}
-```
-
-You may also wish to use a separate vhost in your `/etc/nginx/sites-enabled` directory. To do so, create the vhost in that directory as `/etc/nginx/sites-enabled/00-default.conf`. You will also need to change two lines in the main `nginx.conf`:
-
-```
-# Swap both conf.d include line and the sites-enabled include line. From:
-include /etc/nginx/conf.d/*.conf;
-include /etc/nginx/sites-enabled/*;
-
-# to the following
-
-include /etc/nginx/sites-enabled/*;
-include /etc/nginx/conf.d/*.conf;
-```
-
-Alternatively, you may push an app to your dokku host with a name like "00-default". As long as it lists first in `ls /home/dokku/*/nginx.conf | head`, it will be used as the default nginx vhost.
+See the [default site documentation](/dokku/deployment/domain-configuration/#default-site).
 
 ## Running behind a load balancer
 
@@ -208,3 +223,11 @@ See the [HSTS documentation](/dokku/deployment/ssl-configuration/#hsts-header).
 ## SSL Configuration
 
 See the [ssl documentation](/dokku/deployment/ssl-configuration/).
+
+## Disabling Nginx
+
+See the [proxy documentation](/dokku/proxy/).
+
+## Managing Proxy Port mappings
+
+See the [proxy documentation](/dokku/proxy/#proxy-port-mapping).

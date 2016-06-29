@@ -36,9 +36,11 @@ else ifeq ($(shell grep dokku.me /root/.ssh/config),)
 	echo "Host 127.0.0.1 \\r\\n Port 22333 \\r\\n RequestTTY yes \\r\\n IdentityFile /root/.ssh/dokku_test_rsa" >> /root/.ssh/config
 endif
 
+ifneq ($(wildcard /etc/ssh/sshd_config),)
 ifeq ($(shell grep 22333 /etc/ssh/sshd_config),)
 	sed --in-place "s:^Port 22:Port 22 \\nPort 22333:g" /etc/ssh/sshd_config
 	restart ssh
+endif
 endif
 
 	@echo "-----> Installing SSH public key..."
@@ -68,10 +70,8 @@ endif
 lint:
 	# these are disabled due to their expansive existence in the codebase. we should clean it up though
 	# SC2034: VAR appears unused - https://github.com/koalaman/shellcheck/wiki/SC2034
-	# SC2086: Double quote to prevent globbing and word splitting - https://github.com/koalaman/shellcheck/wiki/SC2086
 	@echo linting...
-	@$(QUIET) shellcheck ./contrib/dokku_client.sh
-	@$(QUIET) find . -not -path '*/\.*' | xargs file | egrep "shell|bash" | egrep -v "directory|toml" | awk '{ print $$1 }' | sed 's/://g' | grep -v dokku_client.sh | xargs shellcheck -e SC2034,SC2086
+	@$(QUIET) find . -not -path '*/\.*' -not -path './debian/*' -type f | xargs file | grep text | awk -F ':' '{ print $$1 }' | xargs head -n1 | egrep -B1 "bash" | grep "==>" | awk '{ print $$2 }' | xargs shellcheck -e SC2034
 
 unit-tests:
 	@echo running unit tests...
@@ -100,6 +100,10 @@ deploy-test-dockerfile:
 deploy-test-dockerfile-noexpose:
 	@echo deploying dockerfile-noexpose app...
 	cd tests && ./test_deploy ./apps/dockerfile-noexpose dokku.me
+
+deploy-test-dockerfile-procfile:
+	@echo deploying dockerfile-procfile app...
+	cd tests && ./test_deploy ./apps/dockerfile-procfile dokku.me
 
 deploy-test-gitsubmodules:
 	@echo deploying gitsubmodules app...
@@ -156,6 +160,7 @@ deploy-tests:
 	@$(QUIET) $(MAKE) deploy-test-clojure
 	@$(QUIET) $(MAKE) deploy-test-dockerfile
 	@$(QUIET) $(MAKE) deploy-test-dockerfile-noexpose
+	@$(QUIET) $(MAKE) deploy-test-dockerfile-procfile
 	@$(QUIET) $(MAKE) deploy-test-gitsubmodules
 	@$(QUIET) $(MAKE) deploy-test-go
 	@$(QUIET) $(MAKE) deploy-test-java

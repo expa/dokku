@@ -1,4 +1,4 @@
-## Troubleshooting
+# Troubleshooting
 
 __Symptom:__ I deployed my app but I am getting the default nginx page
 
@@ -7,7 +7,7 @@ __Solution:__
 Most of the time it's caused by some defaults newer versions of nginx set. To make sure that's the issue you're having run the following:
 
 ```
-root@dockerapps:/home/git# nginx
+$ nginx -t
 nginx: [emerg] could not build the server_names_hash, you should increase server_names_hash_bucket_size: 32
 ```
 
@@ -27,9 +27,9 @@ A value of 64 would allow domains with up to 64 characters. Set it to 128 if you
 Save the file and try stopping nginx and starting it again:
 
 ```
-root@dockerapps:~/dokku# /etc/init.d/nginx stop
+$ /etc/init.d/nginx stop
  * Stopping nginx nginx                                        [ OK ]
-root@dockerapps:~/dokku# /etc/init.d/nginx start
+$ /etc/init.d/nginx start
  * Starting nginx nginx                                        [ OK ]
 ```
 
@@ -65,14 +65,14 @@ __Solution (Less solution, more helpful troubleshooting steps):__
   Find the failed phase's container image (*077581956a92* in this example)
 
     ```
-    root@dokku:~# docker ps -a  | grep build
+    $ docker ps -a  | grep build
     94d9515e6d93        077581956a92                "/build"       29 minutes ago      Exited (0) 25 minutes ago                       cocky_bell
     ```
 
   Start a new container with the failed image and poke around (i.e. ensure you can access the internet from within the container or attempt the failed command, if known)
 
     ```
-    root@dokku:~# docker run -ti 077581956a92 /bin/bash
+    $ docker run -ti 077581956a92 /bin/bash
     root@9763ab86e1b4:/# curl -s -S icanhazip.com
     192.168.0.1
     curl http://s3pository.heroku.com/node/v0.10.30/node-v0.10.30-linux-x64.tar.gz -o node-v0.10.30-linux-x64.tar.gz
@@ -84,10 +84,10 @@ __Solution (Less solution, more helpful troubleshooting steps):__
   Additionally we've seen issues if changing networks that have different DNS resolvers. In this case, you can run the following to update your resolv.conf
 
   ```
-  root@dokku:~# resolvconf -u
+  $ resolvconf -u
   ```
 
-Please see https://github.com/progrium/dokku/issues/841 and https://github.com/progrium/dokku/issues/649
+Please see https://github.com/dokku/dokku/issues/841 and https://github.com/dokku/dokku/issues/649
 
 ***
 
@@ -105,7 +105,7 @@ You have to point ssh to the correct secret key for your domain name. Add the fo
     Host DOKKU_HOSTNAME
       IdentityFile "~/.ssh/KEYNAME"
 
-Also see [issue #116](https://github.com/progrium/dokku/issues/116)
+Also see [issue #116](https://github.com/dokku/dokku/issues/116)
 
 ***
 
@@ -119,7 +119,7 @@ When specifying your port you may want to use something similar to:
 
     var port = process.env.PORT || 3000
 
-Please see https://github.com/progrium/dokku/issues/282
+Please see https://github.com/dokku/dokku/issues/282
 
 ***
 
@@ -146,5 +146,5 @@ dokku config:set --global CURL_CONNECT_TIMEOUT=30
 ```
 
 References
-* https://github.com/progrium/dokku/issues/509
+* https://github.com/dokku/dokku/issues/509
 * https://github.com/dokku-alt/dokku-alt/issues/169

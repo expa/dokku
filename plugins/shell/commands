@@ -1,61 +1,32 @@
 #!/usr/bin/env bash
-[[ " shell help shell:help " == *" $1 "* ]] || exit $DOKKU_NOT_IMPLEMENTED_EXIT
+[[ " help shell:help " == *" $1 "* ]] || exit "$DOKKU_NOT_IMPLEMENTED_EXIT"
 set -eo pipefail; [[ $DOKKU_TRACE ]] && set -x
 
 case "$1" in
-  shell)
-    INPUTRC="$PLUGIN_ROOT/inputrc"
-    HISTFILE=~/.dokku_history
-
-    history -r || true
-
-    trim()
-    {
-      sed -e 's/^[[:space:]]*//g' -e 's/[[:space:]]*$//g'
+  help | shell:help)
+    help_content_func () {
+      declare desc="return shell plugin help content"
+      cat<<help_content
+    shell, Spawn dokku shell
+help_content
     }
 
-    trap 'history -w' EXIT
-
-    while true; do
-      trap '' SIGINT
-      read -rep "dokku> " line || {
-        echo; true; break
-      }
-      trap - SIGINT
-
-      line=$(echo $line | trim)
-      CMD=$(echo $line | awk '{ print $1 }')
-
-      [[ -z $CMD ]] && continue
-
-      [[ "$line" != "$(fc -ln -1 | trim)" ]] && history -s "$line"
-
-      case $CMD in
-        # shell builtins
-        clear)
-          clear
-          ;;
-
-        quit|exit)
-          break
-          ;;
-
-        # Not a built-in, run as regular dokku command
-        *)
-          dokku $line || true
-      esac
-
-    done
-    ;;
-
-  help | shell:help)
-    cat<<EOF
-    shell, Spawn dokku shell
-EOF
+    if [[ $1 = "shell:help" ]] ; then
+        echo -e 'Usage: dokku docker-options[:COMMAND]'
+        echo ''
+        echo 'Dokku shell is an interactive dokku prompt.'
+        echo ''
+        echo 'Note: See dokku enter:help for shell access to containers.'
+        echo ''
+        echo 'Additional commands:'
+        help_content_func | sort | column -c2 -t -s,
+    else
+        help_content_func
+    fi
     ;;
 
   *)
-    exit $DOKKU_NOT_IMPLEMENTED_EXIT
+    exit "$DOKKU_NOT_IMPLEMENTED_EXIT"
     ;;
 
 esac

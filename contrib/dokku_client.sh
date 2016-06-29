@@ -33,6 +33,14 @@ client_help_msg() {
   exit 20 # exit with specific status. only used in units tests for now
 }
 
+is_git_repo() {
+    git rev-parse &>/dev/null
+}
+
+has_dokku_remote() {
+    git remote show | grep dokku
+}
+
 if [[ -z $DOKKU_HOST ]]; then
   if [[ -d .git ]] || git rev-parse --git-dir > /dev/null 2>&1; then
     DOKKU_HOST=$(git remote -v 2>/dev/null | grep -Ei "^dokku" | head -n 1 | cut -f1 -d' ' | cut -f2 -d '@' | cut -f1 -d':' 2>/dev/null || true)
@@ -40,6 +48,8 @@ if [[ -z $DOKKU_HOST ]]; then
     client_help_msg
   fi
 fi
+
+export DOKKU_PORT=${DOKKU_PORT:=22}
 
 if [[ ! -z $DOKKU_HOST ]]; then
   _dokku() {
@@ -52,76 +62,41 @@ if [[ ! -z $DOKKU_HOST ]]; then
       echo "This is not a git repository"
     fi
 
-    if [[ "$appname" != "" ]] && [[ -n "$*" ]]; then
-      case "$1" in
-        apps|backup*|help|plugins*|ps:restartall|trace|version)
-          true
-          ;;
-        apps:destroy)
-          if [[ -z "$2" ]] || [[ "$2" == "force" ]]; then
-            donotshift="YES"
-          fi
-          ;;
-        *)
-          donotshift="YES"
-          ;;
-      esac
-    fi
-
-    if [[ "$1" = "apps:create" ]] && [[ -z "$2" ]]; then
-      appname=$(random_name)
-      counter=0
-      while ssh "dokku@$DOKKU_HOST" apps 2>/dev/null| grep -q "$appname"; do
-        if [[ $counter -ge 100 ]]; then
-          echo "Error: could not reasonably generate a new app name. try cleaning up some apps..."
-          ssh "dokku@$DOKKU_HOST" apps
-          exit 1
-        else
+    case "$1" in
+      apps:create)
+        if [[ -z "$2" ]]; then
           appname=$(random_name)
-          counter=$((counter+1))
+          counter=0
+          while ssh -p "$DOKKU_PORT" "dokku@$DOKKU_HOST" apps 2>/dev/null| grep -q "$appname"; do
+            if [[ $counter -ge 100 ]]; then
+              echo "Error: could not reasonably generate a new app name. try cleaning up some apps..."
+              ssh -p "$DOKKU_PORT" "dokku@$DOKKU_HOST" apps
+              exit 1
+            else
+              appname=$(random_name)
+              counter=$((counter+1))
+            fi
+          done
+        else
+          appname="$2"
         fi
-      done
-      if git remote add dokku "dokku@$DOKKU_HOST:$appname"; then
-        echo "-----> Dokku remote added at $DOKKU_HOST"
-        echo "-----> Application name is $appname"
-      else
-        echo "!      Dokku remote not added! Do you already have a dokku remote?"
-        return
-      fi
-      git push dokku master
-      return $?
-    fi
-
-    if [[ -z "$donotshift" ]]; then
-      # shellcheck disable=SC2029
-      ssh -o LogLevel=QUIET -t "dokku@$DOKKU_HOST" "$@"
-      exit $?
-    fi
-
-    if [[ -z "$verb" ]]; then
-      if [[ ! "$1" =~ --* ]]; then
-        verb=$1
-        shift
-
-        if [[ "$1" == "$appname" ]]; then
-          shift
+        if git remote add dokku "dokku@$DOKKU_HOST:$appname"; then
+          echo "-----> Dokku remote added at $DOKKU_HOST"
+          echo "-----> Application name is $appname"
+        else
+          echo "!      Dokku remote not added! Do you already have a dokku remote?"
+          return
         fi
+        ;;
+    apps:destroy)
+      is_git_repo && has_dokku_remote && git remote remove dokku
+      ;;
+    esac
 
-        args="$*"
-      else
-        long_args="--"
-        for arg in "$@"; do
-          if [[ "$arg" =~ --* ]]; then
-            long_args+=" $arg"
-            args=("${args[@]/$arg}")
-          else
-             verb="$arg"
-          fi
-        done
-      fi
-    fi
-    # shellcheck disable=SC2086,SC2029
-    ssh -o LogLevel=QUIET -t "dokku@$DOKKU_HOST" $long_args "$verb" "$appname" "${args[@]}"
+    [[ -n "$@" ]] && [[ -n "$appname" ]] && app_arg="--app $appname"
+    # echo "ssh -o LogLevel=QUIET -p $DOKKU_PORT -t dokku@$DOKKU_HOST -- $app_arg $@"
+    # shellcheck disable=SC2068,SC2086
+    ssh -o LogLevel=QUIET -p $DOKKU_PORT -t dokku@$DOKKU_HOST -- $app_arg $@
   }
 
   if [[ "$0" == "dokku" ]] || [[ "$0" == *dokku_client.sh ]] || [[ "$0" == $(which dokku) ]]; then

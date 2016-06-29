@@ -4,19 +4,16 @@ If you’re stuck, there are a number of places you can get help:
 
 ## The Official Dokku Website
 
-[http://progrium.viewdocs.io/dokku](http://progrium.viewdocs.io/dokku)
+[http://dokku.viewdocs.io/dokku](/dokku)
 
 The Official Dokku website is always a great place to visit. It features links to oft-used developer tools, community plugins, and guides on using dokku.
 
-## The IRC Channel
+## The IRC and Slack Channels
 
-IRC Channel on irc.freenode.net:
+- [irc.freenode.net/#dokku](https://webchat.freenode.net/?channels=dokku)
+- [Gliderlabs Slack](https://glider-slackin.herokuapp.com/)
 
-- #dokku – General Discussion
-
-If you’re stumped, give us a holler in the Dokku IRC channel. Someone from the development team is usually there, especially during the daylight hours for North and South America users. We’d love to hear from you, whether you need some help, want to find users in your area, or would like to donate your brand new sports car.
-
-If [here](http://webchat.freenode.net/?channels=dokku) for a web-based client IRC client.
+If you’re stumped, give us a holler in the Dokku IRC or Slack channels. Someone from the development team is usually there, especially during the daylight hours for North and South America users. We’d love to hear from you, whether you need some help, want to find users in your area, or would like to donate your brand new sports car.
 
 ## Stack Overflow
 
